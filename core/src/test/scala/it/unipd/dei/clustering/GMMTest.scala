@@ -20,7 +20,7 @@ import org.scalacheck._
 import org.scalacheck.Prop.{forAll, BooleanOperators, all}
 import Utils._
 
-object FarthestPointHeuristicTest extends Properties("FarthestPointHeuristic") {
+object GMMTest extends Properties("FarthestPointHeuristic") {
 
   val distance: (Point, Point) => Double = Distance.euclidean
 

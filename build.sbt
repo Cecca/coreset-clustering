@@ -57,6 +57,7 @@ lazy val core = (project in file("core")).
     )),
     testFrameworks in Benchmark += new TestFramework("org.scalameter.ScalaMeterFramework"),
     parallelExecution in Benchmark := false,
+    parallelExecution in Test := false,
     logBuffered in Benchmark := false
   ).
   configs(Benchmark).
