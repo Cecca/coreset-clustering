@@ -16,8 +16,9 @@
 
 package it.unipd.dei.clustering
 
-import org.scalacheck.Prop.{BooleanOperators, forAll}
+import org.scalacheck.Prop.{forAll, BooleanOperators}
 import org.scalacheck._
+
 import scala.util.Random
 
 object StreamingCoresetChecks extends Properties("StreamingCoreset") {
@@ -26,30 +27,42 @@ object StreamingCoresetChecks extends Properties("StreamingCoreset") {
 
   val distance: (Point, Point) => Double = Distance.euclidean
 
-  property("farness") =
-    forAll(Gen.choose(2, 100), Gen.posNum[Int], Gen.choose(2, 1000))
-    { (kernelSize, numDelegates, n) =>
-      val coreset = new StreamingCoreset(kernelSize, numDelegates, distance)
-      (0 until n).foreach { _ =>
-        coreset.update(Point.random(1, randomGen))
+  property("coreset weight") =
+    forAll(Gen.choose(2, 100), Gen.choose(2, 1000))
+    { (kernelSize, n) =>
+      val coreset = new StreamingCoreset[Point](kernelSize, distance)
+      val points = (0 until n).map(_ => Point.random(1, randomGen))
+      points.foreach { p =>
+        coreset.update(p)
       }
 
-      coreset.numKernelPoints == 1 || coreset.threshold <= coreset.minKernelDistance
+      (coreset.weight == points.length) :| s"n=${points.length}, but coreset has weight ${coreset.weight},\n$coreset\n$points"
     }
 
-  property("radius") =
-    forAll(Gen.choose(2, 100), Gen.choose(1, 100), Gen.choose(2, 1000))
-    { (kernelSize, numDelegates, n) =>
-      (n > kernelSize) ==> {
-        val coreset = new StreamingCoreset(kernelSize, numDelegates, distance)
-        (0 until n).foreach { _ =>
-          coreset.update(Point.random(1, randomGen))
-        }
+//  property("farness") =
+//    forAll(Gen.choose(2, 100), Gen.posNum[Int], Gen.choose(2, 1000))
+//    { (kernelSize, numDelegates, n) =>
+//      val coreset = new StreamingCoreset(kernelSize, numDelegates, distance)
+//      (0 until n).foreach { _ =>
+//        coreset.update(Point.random(1, randomGen))
+//      }
+//
+//      coreset.numKernelPoints == 1 || coreset.threshold <= coreset.minKernelDistance
+//    }
 
-        (coreset.delegatesRadius <= 2 * coreset.threshold) :|
-          s"Radius: ${coreset.delegatesRadius} > 2*threshold: ${coreset.threshold}"
-      }
-    }
+//  property("radius") =
+//    forAll(Gen.choose(2, 100), Gen.choose(1, 100), Gen.choose(2, 1000))
+//    { (kernelSize, numDelegates, n) =>
+//      (n > kernelSize) ==> {
+//        val coreset = new StreamingCoreset(kernelSize, numDelegates, distance)
+//        (0 until n).foreach { _ =>
+//          coreset.update(Point.random(1, randomGen))
+//        }
+//
+//        (coreset.delegatesRadius <= 2 * coreset.threshold) :|
+//          s"Radius: ${coreset.delegatesRadius} > 2*threshold: ${coreset.threshold}"
+//      }
+//    }
 
 
 }

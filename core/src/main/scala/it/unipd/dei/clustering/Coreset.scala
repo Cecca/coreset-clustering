@@ -20,4 +20,8 @@ trait Coreset[T] {
 
   def points: Vector[WeightedPoint[T]]
 
+  def weight: Long = points.map(_.weight).sum
+
+  override def toString: String = points.mkString("[", ", ", "]")
+
 }

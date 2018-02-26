@@ -34,9 +34,7 @@ object MapReduceCoreset {
 
   def run[T:ClassTag](points: Array[T],
                       kernelSize: Int,
-                      numDelegates: Int,
                       distance: (T, T) => Double): MapReduceCoreset[T] = {
-    val resultSize = kernelSize * numDelegates
     if (points.length < kernelSize) {
       new MapReduceCoreset(points.map(WeightedPoint(_, 1L)).toVector, 0.0)
     } else {
@@ -62,7 +60,7 @@ object MapReduceCoreset {
         radius = math.max(radius, minDist)
         assert(minDist <= Utils.minDistance(kernel, distance),
           s"Distance: $minDist, farness: ${Utils.minDistance(kernel, distance)}")
-        counts.put(kernel(minIdx), counts.getOrElse(kernel(minIdx), 0L))
+        counts.put(kernel(minIdx), counts.getOrElse(kernel(minIdx), 0L) + 1L)
         pointIdx += 1
       }
       new MapReduceCoreset(counts.map(WeightedPoint.fromTuple).toVector, radius)

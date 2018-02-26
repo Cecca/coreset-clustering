@@ -58,7 +58,6 @@ object StreamingCoreset {
 }
 
 class StreamingCoreset[T: ClassTag](val kernelSize: Int,
-                                    val numDelegates: Int,
                                     val distance: (T, T) => Double)
 extends Coreset[T] {
 
@@ -70,7 +69,10 @@ extends Coreset[T] {
   private def farnessInvariant: Boolean =
     (numKernelPoints == 1) || (minKernelDistance >= threshold)
 
-  private def radiusInvariant: Boolean = delegatesRadius <= 2*threshold
+  // TODO: Keep track of the radius
+//  private def radiusInvariant: Boolean = delegatesRadius <= 2*threshold
+
+  private def weightInvariant: Boolean = weight == _seen
 
   // When true, accept all the incoming points
   private var _initializing = true
@@ -82,12 +84,10 @@ extends Coreset[T] {
 
   // The number of times the coreset have been restructured by a merge operation
   private var _numRestructurings: Int = 0
+  private var _seen: Long = 0L
 
   private val _kernel = Array.ofDim[T](kernelSize + 1)
-
-  // Kernel points are not explicitly stored as delegates.
-  private val _delegates: Array[Array[T]] = Array.ofDim[T](_kernel.length, numDelegates)
-  private val _delegateCounts = Array.ofDim[Int](_kernel.length)
+  private val _weights = Array.ofDim[Long](_kernel.length)
 
   private[clustering]
   def initializing: Boolean = _initializing
@@ -113,25 +113,11 @@ extends Coreset[T] {
   private[clustering]
   def addKernelPoint(point: T): Unit = {
     _kernel(_insertionIdx) = point
+    _weights(_insertionIdx) = 1L
     _insertionIdx += 1
   }
 
-  private[clustering]
-  def delegatesOf(index: Int): Iterator[T] =
-    new Iterator[T] {
-      var itIdx = 0
-      val maxIdx = _delegateCounts(index)
-
-      override def hasNext: Boolean = itIdx < maxIdx
-
-      override def next(): T = {
-        val elem = _delegates(index)(itIdx)
-        itIdx += 1
-        elem
-      }
-    }
-
-  def pointsIterator: Iterator[T] = kernelPointsIterator ++ delegatePointsIterator
+  def pointsIterator: Iterator[T] = kernelPointsIterator
 
   private[clustering]
   def kernelPointsIterator: Iterator[T] =
@@ -154,34 +140,7 @@ extends Coreset[T] {
     }
 
   private[clustering]
-  def delegatePointsIterator: Iterator[T] =
-    (0 until numKernelPoints).iterator.flatMap { idx =>
-      delegatesOf(idx)
-    }
-
-  private[clustering]
   def minKernelDistance: Double = minDistance(kernelPointsIterator.toArray[T], distance)
-
-  /**
-    * Find the maximum minimum distance between delegates and kernel points
-    */
-  private[clustering]
-  def delegatesRadius: Double = {
-    var radius = 0.0
-    delegatePointsIterator.foreach { dp =>
-      var curRadius = 0.0
-      kernelPointsIterator.foreach { kp =>
-        val d = distance(kp, dp)
-        if (d < curRadius) {
-          curRadius = d
-        }
-      }
-      if (curRadius > radius) {
-        radius = curRadius
-      }
-    }
-    radius
-  }
 
   private def closestKernelDistance(point: T): Double = {
     var m = Double.PositiveInfinity
@@ -202,19 +161,10 @@ extends Coreset[T] {
       _threshold = minDist
     }
     addKernelPoint(point)
+    DEBUG(s"New center: $this")
+    assert(weightInvariant, "Weight after new center")
     if (_insertionIdx == _kernel.length) {
       _initializing = false
-    }
-  }
-
-  private[clustering]
-  def addDelegate(index: Int, point: T): Boolean = {
-    if (_delegateCounts(index) < numDelegates) {
-      _delegates(index)(_delegateCounts(index)) = point
-      _delegateCounts(index) += 1
-      true
-    } else {
-      false
     }
   }
 
@@ -242,37 +192,37 @@ extends Coreset[T] {
     if (minDist > 2 * _threshold) {
       // Pick the point as a center
       addKernelPoint(point)
+      DEBUG(s"New center: $this")
+      assert(weightInvariant, "Weight after new center")
       true
     } else {
-      // Add as a delegate, if possible
-      addDelegate(minIdx, point)
+      // Increment the weight of the center
+      _weights(minIdx) += 1
+      DEBUG(s"Discarded element: $this")
+      assert(weightInvariant, "Weight after insertion")
+      false
     }
   }
 
   private[clustering]
   def swapData(i: Int, j: Int): Unit = {
     swap(_kernel, i, j)
-    swap(_delegateCounts, i, j)
-    swap(_delegates, i, j)
-  }
-
-  private[clustering]
-  def mergeDelegates(center: Int, merged: Int): Unit = {
-    // Try to add the merged point as a delegate of the center
-    addDelegate(center, _kernel(merged))
-    val dels = delegatesOf(merged)
-    // Add delegates while we have space
-    while (dels.hasNext && addDelegate(center, dels.next())) {}
+    swap(_weights, i, j)
   }
 
   private[clustering]
   def resetData(from: Int): Unit = {
     var idx = from
     while (idx < _kernel.length) {
-      _delegateCounts(idx) = 0
+      _weights(idx) = 0
       idx += 1
     }
   }
+
+  private def DEBUG(str: String): Unit =
+    if (false) {
+      println(str)
+    }
 
   private[clustering]
   def merge(): Unit = {
@@ -288,25 +238,31 @@ extends Coreset[T] {
     _threshold *= 2
     _numRestructurings += 1
 
+    DEBUG(s"Threshold ${_threshold}")
+    DEBUG(s"Before $this")
     var bottomIdx = 0
     var topIdx = _kernel.length - 1
-    while (bottomIdx < topIdx) {
+    while (bottomIdx <= topIdx) {
       val pivot = _kernel(bottomIdx)
       var candidateIdx = bottomIdx + 1
       // Discard the points that are too close to the pivot
       while (candidateIdx <= topIdx) {
+        DEBUG(s"bottom: $bottomIdx candidate: $candidateIdx, top: $topIdx")
         if (distance(pivot, _kernel(candidateIdx)) <= _threshold) {
-          // Merge the delegate sets of the pivot and the to-be-discarded candidate
-          mergeDelegates(bottomIdx, candidateIdx)
+          // Add all the weight of the to-be-discarded candidate to the pivot
+          _weights(bottomIdx) += _weights(candidateIdx)
           // Move the candidate (and all its data) to the end of the array
           swapData(candidateIdx, topIdx)
+          DEBUG(s"Discadring $candidateIdx")
           topIdx -= 1
         } else {
           // Keep the point in the candidate zone
+          DEBUG(s"Keeping $candidateIdx as candidate")
           candidateIdx += 1
         }
+        DEBUG(s"After $this")
       }
-      // Move to the next point to be retained
+//       Move to the next point to be retained
       bottomIdx += 1
     }
     // Reset the data related to excluded points
@@ -314,10 +270,13 @@ extends Coreset[T] {
     // Set the new insertionIdx
     _insertionIdx = bottomIdx
 
+    DEBUG(s"After merge $this")
+
     // Check the invariant of the minimum distance between kernel points
     assert(farnessInvariant, "Farness after merge")
-    // Check the invariant of radius
-    assert(radiusInvariant, "Radius after merge")
+    // TODO: Check the invariant of radius
+//    assert(radiusInvariant, "Radius after merge")
+    assert(weightInvariant, s"Weight after merge: $weight when we have seen ${_seen} points")
   }
 
   /**
@@ -325,11 +284,16 @@ extends Coreset[T] {
     * Return true if the point is added to the inner core-set
     */
   def update(point: T): Boolean = {
+    DEBUG(s"Processing point $point")
     val t = updatesTimer.time()
     // the _insertionIdx variable is modified inside the merge() method
     while (_insertionIdx == _kernel.length) {
       merge()
     }
+
+    // This counter is updated here because the merge rule that might be applied before
+    // refers to the old value, it does not take into account the current point.
+    _seen += 1
 
     val res = if (_initializing) {
       initializationStep(point)
@@ -341,8 +305,6 @@ extends Coreset[T] {
     res
   }
 
-  override def kernel: Vector[T] = kernelPointsIterator.toVector
-
-  override def delegates: Vector[T] = delegatePointsIterator.toVector
-
+  override def points: Vector[WeightedPoint[T]] =
+    kernelPointsIterator.zip(_weights.iterator).map(WeightedPoint.fromTuple).toVector
 }

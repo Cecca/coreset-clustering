@@ -16,8 +16,8 @@
 
 package it.unipd.dei.clustering
 
+import org.scalacheck.Prop.{BooleanOperators, forAll}
 import org.scalacheck._
-import org.scalacheck.Prop.{BooleanOperators, forAll, all}
 
 object MapReduceCoresetTest extends Properties("MapReduceCoreset") {
 
@@ -30,13 +30,23 @@ object MapReduceCoresetTest extends Properties("MapReduceCoreset") {
   property("number of points") =
     forAll(Gen.nonEmptyListOf(pointGen(1))) { points =>
       forAll(Gen.choose(2, points.length / 2)) { k =>
-        forAll(Gen.choose(k, points.length / 2)) { kernelSize =>
           (points.size > k) ==> {
             val coreset = MapReduceCoreset.run(
-              points.toArray, kernelSize, k, distance)
+              points.toArray, k, distance)
 
-            (coreset.length >= k) :| s"Coreset size is ${coreset.length}"
-          }
+            (coreset.points.size >= k) :| s"Coreset size is ${coreset.points.size}"
+        }
+      }
+    }
+
+  property("weight of coreset") =
+    forAll(Gen.nonEmptyListOf(pointGen(1))) { points =>
+      forAll(Gen.choose(2, points.length / 2)) { k =>
+          (points.size > k) ==> {
+            val coreset = MapReduceCoreset.run(
+              points.toArray, k, distance)
+
+            (coreset.weight == points.length) :| s"The points are ${points.size}, but coreset weight is ${coreset.weight}"
         }
       }
     }
@@ -44,39 +54,36 @@ object MapReduceCoresetTest extends Properties("MapReduceCoreset") {
   property("no duplicates") =
     forAll(Gen.nonEmptyListOf(pointGen(1))) { points =>
       forAll(Gen.choose(2, points.length / 2)) { k =>
-        forAll(Gen.choose(k, points.length / 2)) { kernelSize =>
           (points.size > k) ==> {
             val coreset = MapReduceCoreset.run(
-              points.toArray, kernelSize, k, distance)
+              points.toArray, k, distance)
 
-            coreset.points.toSet.size == coreset.length
+            coreset.points.toSet.size == coreset.points.size
           }
         }
       }
-    }
+//
+//  val anticoverParameters = for {
+//    points <- Gen.nonEmptyListOf(pointGen(1))
+//    k <- Gen.choose(2, points.length)
+//  } yield (points, k)
 
-  val anticoverParameters = for {
-    points <- Gen.nonEmptyListOf(pointGen(1))
-    k <- Gen.choose(2, points.length)
-    kernelSize <- Gen.choose(k, points.length)
-  } yield (points, k, kernelSize)
-
-  property("anticover") =
-    forAll(Gen.nonEmptyListOf(pointGen(1))) { points =>
-      forAll(Gen.choose(2, points.length/2)) { k =>
-        forAll(Gen.choose(k, points.length/2)) { kernelSize =>
-          val coreset = MapReduceCoreset.run(
-            points.toArray, kernelSize, k, distance)
-
-          val radius =
-            Utils.maxMinDistance(coreset.delegates, coreset.kernel, distance)
-
-          val farness =
-            Utils.minDistance(coreset.kernel, distance)
-
-          (radius <= farness) :| s"radius $radius, farness $farness"
-        }
-      }
-    }
+//  property("anticover") =
+//    forAll(Gen.nonEmptyListOf(pointGen(1))) { points =>
+//      forAll(Gen.choose(2, points.length/2)) { k =>
+//        forAll(Gen.choose(k, points.length/2)) { kernelSize =>
+//          val coreset = MapReduceCoreset.run(
+//            points.toArray, kernelSize, k, distance)
+//
+//          val radius =
+//            Utils.maxMinDistance(coreset.delegates, coreset.kernel, distance)
+//
+//          val farness =
+//            Utils.minDistance(coreset.kernel, distance)
+//
+//          (radius <= farness) :| s"radius $radius, farness $farness"
+//        }
+//      }
+//    }
 
 }
