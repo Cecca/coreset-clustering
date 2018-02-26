@@ -17,7 +17,7 @@ object Outliers {
       // TODO: Use par
       // Find the disk covering the most weight
       val center = (0 until n).map({ idx =>
-        var nCov = 0
+        var nCov = 0L
         var j = 0
         while (j < n) {
           if (!covered(j) && distances(idx)(j) <= r) {
@@ -54,7 +54,7 @@ object Outliers {
     val distances = Array.ofDim[Double](n, n)
     for (i <- 0 until n) {
       for (j <- i until n) {
-        val d = distance(points(i), points(j))
+        val d = distance(points(i).point, points(j).point)
         candidatesSet += d
         distances(i)(j) = d
         distances(j)(i) = d

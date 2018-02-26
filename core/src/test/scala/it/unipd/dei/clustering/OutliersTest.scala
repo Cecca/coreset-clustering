@@ -13,12 +13,12 @@ class OutliersTest extends Properties("Outliers algorithm") {
     forAll(Gen.listOf[Double](Gen.choose[Double](0.0, 1.0)), Gen.choose[Int](2, 100), Gen.choose[Int](2, 100))
     { (pts: List[Double], k: Int, z: Int) =>
       (pts.length >= 2 && k < pts.size && z < pts.size) ==> {
-        val points = pts.map(p => Point(p)).toArray
+        val points = pts.map(p => WeightedPoint(Point(p), 1L)).toArray
         val (result, outliers) = Outliers.run(points, k, z, distance)
-        val resultGMM = GMM.run(points, k + z, distance)
+        val resultGMM = GMM.run(points.map(_.point), k + z, distance)
 
-        val radius = maxMinDistance(result, points.toSet.diff(outliers.toSet).toVector, distance)
-        val radiusGMM = maxMinDistance(resultGMM, points, distance)
+        val radius = maxMinDistance(result, points.map(_.point).toSet.diff(outliers.toSet).toVector, distance)
+        val radiusGMM = maxMinDistance(resultGMM, points.map(_.point), distance)
         radiusGMM <= radius
       }
     }

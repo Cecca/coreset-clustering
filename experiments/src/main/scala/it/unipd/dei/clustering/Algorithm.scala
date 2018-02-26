@@ -2,9 +2,11 @@ package it.unipd.dei.clustering
 
 import org.apache.spark.rdd.RDD
 
+import scala.reflect.ClassTag
+
 object Algorithm {
 
-  def mapReduce[T](rdd: RDD[T], k: Int, tau: Int, distance: (T, T) => Double): IndexedSeq[T] = {
+  def mapReduce[T:ClassTag](rdd: RDD[T], k: Int, tau: Int, distance: (T, T) => Double): IndexedSeq[T] = {
     val coreset = rdd.glom().map { points =>
       MapReduceCoreset.run(points, tau, distance)
     }.reduce { case (a, b) =>
@@ -13,7 +15,7 @@ object Algorithm {
     GMM.run(coreset.points.map(_.point), k, distance)
   }
 
-  def mapReduce[T](rdd: RDD[T], k: Int, tau: Int, z: Int, distance: (T, T) => Double)
+  def mapReduce[T:ClassTag](rdd: RDD[T], k: Int, tau: Int, z: Int, distance: (T, T) => Double)
   : (IndexedSeq[T], IndexedSeq[T]) = {
     val coreset = rdd.glom().map { points =>
       MapReduceCoreset.run(points, tau + z, distance)
@@ -23,7 +25,7 @@ object Algorithm {
     Outliers.run(coreset.points, k, z, distance)
   }
 
-  def streaming[T](stream: Iterator[T], k: Int, tau: Int, distance: (T, T) => Double): IndexedSeq[T] = {
+  def streaming[T:ClassTag](stream: Iterator[T], k: Int, tau: Int, distance: (T, T) => Double): IndexedSeq[T] = {
     val coreset = new StreamingCoreset[T](tau, distance)
     while(stream.hasNext) {
       coreset.update(stream.next())
@@ -31,7 +33,7 @@ object Algorithm {
     GMM.run(coreset.points.map(_.point), k, distance)
   }
 
-  def streaming[T](stream: Iterator[T], k: Int, tau: Int, z: Int, distance: (T, T) => Double)
+  def streaming[T:ClassTag](stream: Iterator[T], k: Int, tau: Int, z: Int, distance: (T, T) => Double)
   : (IndexedSeq[T], IndexedSeq[T]) = {
     val coreset = new StreamingCoreset[T](tau + z, distance)
     while(stream.hasNext) {
