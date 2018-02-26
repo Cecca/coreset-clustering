@@ -4,7 +4,7 @@ import scala.collection.mutable
 
 object Outliers {
 
-  def run[T](points: IndexedSeq[T], k: Int, r: Double, distances: Array[Array[Double]])
+  def run[T](points: IndexedSeq[WeightedPoint[T]], k: Int, r: Double, distances: Array[Array[Double]])
   : (IndexedSeq[T], IndexedSeq[T]) = {
     val n = points.size
     val centers = new mutable.ArrayBuffer[T]()
@@ -14,14 +14,22 @@ object Outliers {
     var iteration = 0
     while (iteration < n && covered.count(!_) > 0) {
 
-      // Find the disk covering the most points
+      // TODO: Use par
+      // Find the disk covering the most weight
       val center = (0 until n).map({ idx =>
-        val nCov = distances(idx).zipWithIndex.count({case (d, i) => !covered(i) && d <= r})
+        var nCov = 0
+        var j = 0
+        while (j < n) {
+          if (!covered(j) && distances(idx)(j) <= r) {
+            nCov += points(j).weight
+          }
+          j += 1
+        }
         (nCov, idx)
       }).maxBy(_._1)._2
       println(s"selected $center as center")
 
-      centers.append(points(center))
+      centers.append(points(center).point)
 
       // Mark points in the large disk as covered
       for (j <- 0 until n) {
@@ -32,12 +40,12 @@ object Outliers {
       iteration += 1
     }
 
-    val outliers = points.zip(covered).filter(_._2).map(_._1)
+    val outliers = points.zip(covered).filter(_._2).map(_._1.point)
 
     (centers.toVector, outliers)
   }
 
-  def run[T](points: IndexedSeq[T], k: Int, z: Int, distance: (T, T) => Double)
+  def run[T](points: IndexedSeq[WeightedPoint[T]], k: Int, z: Int, distance: (T, T) => Double)
   : (IndexedSeq[T], IndexedSeq[T]) = {
     val n = points.size
 
