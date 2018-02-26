@@ -15,7 +15,7 @@ object Outliers {
     while (iteration < n && covered.count(!_) > 0) {
 
       // Find the disk covering the most points
-      val center = (0 until n).filter(!covered(_)).map({ idx =>
+      val center = (0 until n).map({ idx =>
         val nCov = distances(idx).zipWithIndex.count({case (d, i) => !covered(i) && d <= r})
         (nCov, idx)
       }).maxBy(_._1)._2

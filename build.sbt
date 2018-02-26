@@ -11,7 +11,7 @@ lazy val commonSettings = baseSettings ++ Seq(
     "org.scalatest" %% "scalatest" % "2.2.6" % "test",
     "org.scalacheck" %% "scalacheck" % "1.13.0" % "test"
   ),
-  test in assembly := {},
+  //test in assembly := {},
   scalacOptions := Seq(
     "-optimise",
     "-Xdisable-assertions",
@@ -85,21 +85,21 @@ lazy val experiments = (project in file("experiments")).
   //  buildInfoPackage := "it.unipd.dei.diversity"
   //).
   configs(Benchmark).
-  settings(inConfig(Benchmark)(Defaults.testSettings): _*).
-  settings(
-    deploy := {
-      import sbt._
-      import complete.DefaultParsers._
+  settings(inConfig(Benchmark)(Defaults.testSettings): _*)//.
+  //settings(
+  //  deploy := {
+  //    import sbt._
+  //    import complete.DefaultParsers._
 
-      val arg = spaceDelimited("<user@domain:path>").parsed
-      arg.headOption match {
-        case None => sys.error("Please provide the remote to which you want to deploy")
-        case Some(remote) =>
-          val log = streams.value.log
-          val local = assembly.value.getPath
-          val fname = assembly.value.getName
-          log.info(s"Deploy $fname to $remote")
-          Seq("rsync", "--progress", "-z", local, remote) !
-      }
-    }
-  )
+  //    val arg = spaceDelimited("<user@domain:path>").parsed
+  //    arg.headOption match {
+  //      case None => sys.error("Please provide the remote to which you want to deploy")
+  //      case Some(remote) =>
+  //        val log = streams.value.log
+  //        val local = assembly.value.getPath
+  //        val fname = assembly.value.getName
+  //        log.info(s"Deploy $fname to $remote")
+  //        Seq("rsync", "--progress", "-z", local, remote) !
+  //    }
+  //  }
+  //)
