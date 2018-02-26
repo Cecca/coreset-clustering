@@ -1,4 +1,5 @@
-import it.unipd.dei.clustering.{GMM, MapReduceCoreset, Outliers, StreamingCoreset}
+package it.unipd.dei.clustering
+
 import org.apache.spark.rdd.RDD
 
 object Algorithm {

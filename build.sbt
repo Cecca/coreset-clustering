@@ -65,7 +65,7 @@ lazy val experiments = (project in file("experiments")).
     name := "clustering-experiments",
     libraryDependencies ++= filterDeps(Seq(
       "it.unipd.dei" % "experiment-reporter" % "0.3.0",
-      "org.rogach" %% "scallop" % "1.0.1",
+      "org.rogach" %% "scallop" % "3.1.1",
       "org.apache.spark" %% "spark-core" % "2.2.0" % "provided",
       "org.apache.spark" %% "spark-mllib" % "2.2.0" % "provided",
       "com.databricks" %% "spark-avro" % "4.0.0"
