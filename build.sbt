@@ -48,12 +48,7 @@ lazy val core = (project in file("core")).
     name := "clustering-core",
     libraryDependencies ++= filterDeps(Seq(
       "com.storm-enroute" %% "scalameter" % "0.7" % "bench",
-      "io.dropwizard.metrics" % "metrics-core" % "3.1.2",
-      "it.unimi.dsi" % "dsiutils" % "2.3.2",
-      "it.unimi.dsi" % "fastutil" % "7.1.0",
-      "ch.qos.logback" % "logback-classic" % "1.1.7",
-      "org.apache.spark" %% "spark-core" % "2.1.0" % "provided",
-      "org.apache.spark" %% "spark-mllib" % "2.1.0" % "provided"
+      "io.dropwizard.metrics" % "metrics-core" % "3.1.2"
     )),
     testFrameworks in Benchmark += new TestFramework("org.scalameter.ScalaMeterFramework"),
     parallelExecution in Benchmark := false,
@@ -71,7 +66,8 @@ lazy val experiments = (project in file("experiments")).
     libraryDependencies ++= filterDeps(Seq(
       "it.unipd.dei" % "experiment-reporter" % "0.3.0",
       "org.rogach" %% "scallop" % "1.0.1",
-      "com.storm-enroute" %% "scalameter" % "0.7" % "bench"
+      "org.apache.spark" %% "spark-core" % "2.1.0" % "provided",
+      "org.apache.spark" %% "spark-mllib" % "2.1.0" % "provided"
     ))
   ).
   enablePlugins(BuildInfoPlugin).
