@@ -46,10 +46,14 @@ lazy val core = (project in file("core")).
   settings(commonSettings: _*).
   settings(
     name := "clustering-core",
-    libraryDependencies ++= filterDeps(Seq(
-      "com.storm-enroute" %% "scalameter" % "0.7" % "bench",
-      "io.dropwizard.metrics" % "metrics-core" % "3.1.2"
-    )),
+    libraryDependencies ++=
+    //  filterDeps(
+        Seq(
+          "com.storm-enroute" %% "scalameter" % "0.7" % "bench",
+          "io.dropwizard.metrics" % "metrics-core" % "3.1.2"
+        )
+      //)
+    ,
     testFrameworks in Benchmark += new TestFramework("org.scalameter.ScalaMeterFramework"),
     parallelExecution in Benchmark := false,
     parallelExecution in Test := false,
@@ -63,13 +67,16 @@ lazy val experiments = (project in file("experiments")).
   settings(commonSettings :_*).
   settings(
     name := "clustering-experiments",
-    libraryDependencies ++= filterDeps(Seq(
-      "it.unipd.dei" % "experiment-reporter" % "0.3.0",
-      "org.rogach" %% "scallop" % "3.1.1",
-      "org.apache.spark" %% "spark-core" % "2.2.0" % "provided",
-      "org.apache.spark" %% "spark-mllib" % "2.2.0" % "provided",
-      "com.databricks" %% "spark-avro" % "4.0.0"
-    ))
+    libraryDependencies ++=
+      //filterDeps(
+        Seq(
+          "it.unipd.dei" % "experiment-reporter" % "0.3.0",
+          "org.rogach" %% "scallop" % "3.1.1",
+          "org.apache.spark" %% "spark-core" % "2.2.0",// % "provided",
+          "org.apache.spark" %% "spark-mllib" % "2.2.0",// % "provided",
+          "com.databricks" %% "spark-avro" % "4.0.0"
+        )
+      //)
   ).
   enablePlugins(BuildInfoPlugin).
   settings(
