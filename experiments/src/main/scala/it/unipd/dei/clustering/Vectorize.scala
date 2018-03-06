@@ -1,13 +1,10 @@
 package it.unipd.dei.clustering
 
+import java.io.{FileInputStream, InputStream}
+
+import org.apache.commons.compress.compressors.CompressorStreamFactory
 import org.apache.spark.{SparkConf, SparkContext}
 import org.rogach.scallop.ScallopConf
-import com.databricks.spark.avro._
-import org.apache.avro.Schema
-import org.apache.avro.mapred.AvroKey
-import org.apache.avro.mapreduce.{AvroJob, AvroKeyOutputFormat}
-import org.apache.hadoop.io.NullWritable
-import org.apache.hadoop.mapreduce.Job
 
 import scala.io.Source
 
@@ -20,10 +17,21 @@ object Vectorize {
     verify()
   }
 
+  def getInputStream(path: String): InputStream = {
+    val fis = new FileInputStream(path)
+    val ext = path.split("\\.").last
+    if ("bz2".equals(ext) || "bzip2".equals(ext)) {
+      new CompressorStreamFactory()
+        .createCompressorInputStream(CompressorStreamFactory.BZIP2, fis)
+    } else {
+      fis
+    }
+  }
+
   def main(args: Array[String]): Unit = {
     val arguments = new Args(args)
 
-    val model = Source.fromFile(arguments.model()).getLines().map { line =>
+    val model = Source.fromInputStream(getInputStream(arguments.model())).getLines().map { line =>
       val tokens = line.split(" ")
       val word = tokens.head
       val vec: Array[Double] = tokens.tail.map(_.toDouble)

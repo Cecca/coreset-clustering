@@ -20,6 +20,7 @@ object Main {
     val sc = new SparkContext(sparkConf)
 
     val vecs = VectorIO.read(sc, arguments.input())
+    println(s"Loaded ${vecs.count()} vectors")
 
     val lVecs = vecs.collect().map(WeightedPoint(_, 1L))
     val (centers, outliers) = Outliers.run(lVecs, arguments.k(), arguments.z(), VectorUtils.sqdist _)
