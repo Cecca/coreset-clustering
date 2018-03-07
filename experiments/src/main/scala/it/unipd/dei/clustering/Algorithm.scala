@@ -20,12 +20,16 @@ object Algorithm {
 
     val nonOutliersRadius = allPoints.filter({ p =>
       // TODO: This point may be covered by a non-outlier proxy
-      bOutliers.value.map(o => distance(o.point, p) > o.radius).reduce(_ && _)
+      bOutliers.value.forall(o => distance(o.point, p) > o.radius)
     }).map({ p =>
       bCenters.value.iterator.map({ c =>
         distance(c.point, p)
       }).min
     }).max()
+
+    if (outliers.isEmpty) {
+      return nonOutliersRadius
+    }
 
     val potentialOutliers = allPoints.filter({ p =>
       // TODO: Shortcut this operation as soon as it evaluates to true
