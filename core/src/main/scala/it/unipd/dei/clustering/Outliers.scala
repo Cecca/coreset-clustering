@@ -7,9 +7,9 @@ import scala.collection.mutable
 object Outliers {
 
   def run[T](points: IndexedSeq[ProxyPoint[T]], k: Int, r: Double, distances: Array[Array[Double]])
-  : (IndexedSeq[T], IndexedSeq[T]) = {
+  : (IndexedSeq[ProxyPoint[T]], IndexedSeq[ProxyPoint[T]]) = {
     val n = points.size
-    val centers = new mutable.ArrayBuffer[T]()
+    val centers = new mutable.ArrayBuffer[ProxyPoint[T]]()
 
     val covered = Array.fill[Boolean](n)(false)
 
@@ -30,7 +30,7 @@ object Outliers {
         (nCov, idx)
       }).maxBy(_._1)._2
 
-      centers.append(points(center).point)
+      centers.append(points(center))
 
       // Mark points in the large disk as covered
       for (j <- 0 until n) {
@@ -43,13 +43,13 @@ object Outliers {
     }
 
 
-    val outliers = points.zip(covered).filter(!_._2).map(_._1.point)
+    val outliers = points.zip(covered).filter(!_._2).map(_._1)
 
     (centers.toVector, outliers)
   }
 
   def run[T](points: IndexedSeq[ProxyPoint[T]], k: Int, z: Int, distance: (T, T) => Double)
-  : (IndexedSeq[T], IndexedSeq[T]) = {
+  : (IndexedSeq[ProxyPoint[T]], IndexedSeq[ProxyPoint[T]]) = {
     val n = points.size
 
     val candidatesSet = mutable.SortedSet[Double]()
@@ -65,8 +65,8 @@ object Outliers {
     }
     val candidates = candidatesSet.toArray
 
-    var sol: IndexedSeq[T] = Vector.empty[T]
-    var outliers: IndexedSeq[T] = points.map(_.point)
+    var sol: IndexedSeq[ProxyPoint[T]] = Vector.empty[ProxyPoint[T]]
+    var outliers: IndexedSeq[ProxyPoint[T]] = points
 
     var i = 0
     while (outliers.size > z) {

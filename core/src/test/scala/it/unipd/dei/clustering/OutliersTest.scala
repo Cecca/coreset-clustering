@@ -17,7 +17,7 @@ class OutliersTest extends Properties("Outliers algorithm") {
         val (result, outliers) = Outliers.run(points, k, z, distance)
         val resultGMM = GMM.run(points.map(_.point), k + z, distance)
 
-        val radius = maxMinDistance(result, points.map(_.point).toSet.diff(outliers.toSet).toVector, distance)
+        val radius = maxMinDistance(result.map(_.point), points.map(_.point).toSet.diff(outliers.map(_.point).toSet).toVector, distance)
         val radiusGMM = maxMinDistance(resultGMM, points.map(_.point), distance)
         radiusGMM <= radius
       }
