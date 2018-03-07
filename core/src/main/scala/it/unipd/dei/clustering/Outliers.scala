@@ -14,7 +14,7 @@ object Outliers {
     val covered = Array.fill[Boolean](n)(false)
 
     var iteration = 0
-    while (iteration < n && covered.count(!_) > 0) {
+    while (iteration < k && covered.count(!_) > 0) {
 
       // TODO: Use par
       // Find the disk covering the most weight
@@ -29,7 +29,6 @@ object Outliers {
         }
         (nCov, idx)
       }).maxBy(_._1)._2
-      DEBUG(s"selected $center as center")
 
       centers.append(points(center).point)
 
@@ -39,10 +38,12 @@ object Outliers {
           covered(j) = distances(center)(j) <= 3*r
         }
       }
+      DEBUG(s"Selected $center as center | now there are ${covered.count(!_)} uncovered points")
       iteration += 1
     }
 
-    val outliers = points.zip(covered).filter(_._2).map(_._1.point)
+
+    val outliers = points.zip(covered).filter(!_._2).map(_._1.point)
 
     (centers.toVector, outliers)
   }
@@ -64,28 +65,38 @@ object Outliers {
     }
     val candidates = candidatesSet.toArray
 
-    // Do a binary search to find the right value
-    var upper = candidates.length - 1
-    var lower = 0
     var sol: IndexedSeq[T] = Vector.empty[T]
-    var outliers: IndexedSeq[T] = Vector.empty[T]
+    var outliers: IndexedSeq[T] = points.map(_.point)
 
-    DEBUG("============================================")
-    DEBUG(s"Lower ${candidates(lower)} upper ${candidates(upper)} ($upper candidates)")
-
-    while (lower < upper-1) {
-      val mid: Int = (lower + upper) / 2
-      DEBUG(s"Testing ${candidates(mid)} (lower $lower current $mid upper $upper)")
-      val (tmpSol, tmpOutliers) = run(points, k, candidates(lower), distances)
+    var i = 0
+    while (outliers.size > z) {
+      val (tmpSol, tmpOutliers) = run(points, k, candidates(i), distances)
       sol = tmpSol
       outliers = tmpOutliers
-      DEBUG(s"Outliers ${outliers.size} (max $z) : $outliers")
-      if (outliers.size > z) {
-        lower = mid
-      } else {
-        upper = mid
-      }
+      DEBUG(s"Candidate $i : ${candidates(i)} : outliers=${outliers.size}")
+      i += 1
     }
+
+//    // Do a binary search to find the right value
+//    var upper = candidates.length - 1
+//    var lower = 0
+//
+//    DEBUG("============================================")
+//    DEBUG(s"Lower ${candidates(lower)} upper ${candidates(upper)} ($upper candidates)")
+//
+//    while (lower < upper-1) {
+//      val mid: Int = (lower + upper) / 2
+//      DEBUG(s"Testing ${candidates(mid)} (lower $lower current $mid upper $upper)")
+//      val (tmpSol, tmpOutliers) = run(points, k, candidates(lower), distances)
+//      sol = tmpSol
+//      outliers = tmpOutliers
+//      DEBUG(s"Outliers ${outliers.size} (max $z) : $outliers")
+//      if (outliers.size > z) {
+//        lower = mid
+//      } else {
+//        upper = mid
+//      }
+//    }
 
     (sol, outliers)
   }

@@ -12,6 +12,7 @@ object Main {
     verify()
   }
 
+
   def main(args: Array[String]): Unit = {
 
     val arguments = new Args(args)
@@ -22,9 +23,9 @@ object Main {
     val vecs = VectorIO.readKryo(sc, arguments.input())
     println(s"Loaded ${vecs.count()} vectors")
 
-    val lVecs = vecs.collect().map(WeightedPoint(_, 1L))
     val (centers, outliers) = Algorithm.mapReduce(vecs, arguments.k(), arguments.k(), arguments.z(), VectorUtils.sqdist)
-    val radius = Utils.maxMinDistance(lVecs.map(_.point), centers, VectorUtils.sqdist)
+
+    val radius = Utils.maxMinDistance(vecs.collect(), centers, VectorUtils.sqdist)
     println(s"There are ${outliers.size} outliers, the radius is $radius")
   }
 
