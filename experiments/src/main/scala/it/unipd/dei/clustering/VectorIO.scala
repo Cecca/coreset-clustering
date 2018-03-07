@@ -50,16 +50,14 @@ object VectorIO {
   }
 
   def main(args: Array[String]): Unit = {
-    val path = "/tmp/vecs"
-    FileUtils.deleteDirectory(new File(path))
-    val sc = new SparkContext("local", "test")
-    val vec = Array[Double](1.0, 2.0, 3.0, 3.2123)
-    val rdd: RDD[Array[Double]] = sc.parallelize(Seq(vec))
-    println("Writing")
-    writeKryo(rdd, path)
-    println("Reading")
-    val readback = readKryo(sc, path)
-    print(readback.take(1).head.mkString(" | "))
+    if (args.length != 2) {
+      throw new IllegalArgumentException("USAGE: convert input output")
+    }
+    val input = args(0)
+    val output = args(1)
+    val sc = new SparkContext("local[*]", "vectors conversion")
+
+    writeKryo(readText(sc, input), output)
   }
 
 }
