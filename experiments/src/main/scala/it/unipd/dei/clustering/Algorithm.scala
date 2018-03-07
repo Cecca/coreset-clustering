@@ -27,6 +27,8 @@ object Algorithm {
       }).min
     }).max()
 
+    DEBUG(s"Radius not counting potential outliers is $nonOutliersRadius")
+
     if (outliers.isEmpty) {
       return nonOutliersRadius
     }
@@ -35,6 +37,8 @@ object Algorithm {
       // TODO: Shortcut this operation as soon as it evaluates to true
       bOutliers.value.map(o => distance(o.point, p) <= o.radius).reduce(_ || _)
     }).collect()
+
+    DEBUG(s"There are ${potentialOutliers.length} potentially uncovered outliers (${outliers.size} proxies with total weight ${outliers.map(_.weight).sum})")
 
     val uncoveredOutliers = mutable.HashSet[T](potentialOutliers :_*)
 
