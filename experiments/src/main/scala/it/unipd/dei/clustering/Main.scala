@@ -25,8 +25,8 @@ object Main {
 
     val (centers, outliers) = Algorithm.mapReduce(vecs, arguments.k(), arguments.k(), arguments.z(), VectorUtils.sqdist)
 
-    val radius = Utils.maxMinDistance(vecs.collect(), centers, VectorUtils.sqdist)
-    println(s"There are ${outliers.size} outliers, the radius is $radius")
+//    val radius = Algorithm.radius(vecs, centers, outliers, VectorUtils.sqdist)
+//    println(s"There are ${outliers.size} outliers, the radius is $radius")
   }
 
 }
