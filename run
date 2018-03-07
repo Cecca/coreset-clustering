@@ -1,0 +1,22 @@
+#!/bin/bash
+
+# Small utility script to run the project using the compile-time classpath
+# without resorting to SBT every time.
+# This is useful because the fat-jar does not include Spark and Hadoop, since
+# those are provided dependencies
+
+CLASSPATH_FILE=.classpath
+
+if [[ ! -f $CLASSPATH_FILE ]]
+then
+  sbt "export experiments/fullClasspath" | tail -n 1 > $CLASSPATH_FILE
+fi
+
+CLASSPATH=$(cat $CLASSPATH_FILE)
+
+java \
+	-Dspark.master="local[*]" \
+	-Xmx4G \
+	-XX:+UseG1GC \
+	-cp $CLASSPATH it.unipd.dei.clustering.Main $@
+

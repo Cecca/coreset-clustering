@@ -79,6 +79,7 @@ object Outliers {
       val (tmpSol, tmpOutliers) = run(points, k, candidates(lower), distances)
       sol = tmpSol
       outliers = tmpOutliers
+      DEBUG(s"Outliers ${outliers.size} (max $z) : $outliers")
       if (outliers.size > z) {
         lower = mid
       } else {
