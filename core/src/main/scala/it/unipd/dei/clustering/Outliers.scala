@@ -6,7 +6,7 @@ import scala.collection.mutable
 
 object Outliers {
 
-  def run[T](points: IndexedSeq[WeightedPoint[T]], k: Int, r: Double, distances: Array[Array[Double]])
+  def run[T](points: IndexedSeq[ProxyPoint[T]], k: Int, r: Double, distances: Array[Array[Double]])
   : (IndexedSeq[T], IndexedSeq[T]) = {
     val n = points.size
     val centers = new mutable.ArrayBuffer[T]()
@@ -48,7 +48,7 @@ object Outliers {
     (centers.toVector, outliers)
   }
 
-  def run[T](points: IndexedSeq[WeightedPoint[T]], k: Int, z: Int, distance: (T, T) => Double)
+  def run[T](points: IndexedSeq[ProxyPoint[T]], k: Int, z: Int, distance: (T, T) => Double)
   : (IndexedSeq[T], IndexedSeq[T]) = {
     val n = points.size
 

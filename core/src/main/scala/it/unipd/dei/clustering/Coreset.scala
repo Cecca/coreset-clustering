@@ -18,7 +18,7 @@ package it.unipd.dei.clustering
 
 trait Coreset[T] {
 
-  def points: Vector[WeightedPoint[T]]
+  def points: Vector[ProxyPoint[T]]
 
   def weight: Long = points.map(_.weight).sum
 

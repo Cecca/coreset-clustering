@@ -19,7 +19,7 @@ package it.unipd.dei.clustering
 import scala.collection.mutable
 import scala.reflect.ClassTag
 
-class MapReduceCoreset[T:ClassTag](val points: Vector[WeightedPoint[T]],
+class MapReduceCoreset[T:ClassTag](val points: Vector[ProxyPoint[T]],
                                    val radius: Double)
 extends Coreset[T] with Serializable {
 
@@ -36,10 +36,12 @@ object MapReduceCoreset {
                       kernelSize: Int,
                       distance: (T, T) => Double): MapReduceCoreset[T] = {
     if (points.length < kernelSize) {
-      new MapReduceCoreset(points.map(WeightedPoint(_, 1L)).toVector, 0.0)
+      new MapReduceCoreset(points.map(ProxyPoint.fromPoint).toVector, 0.0)
     } else {
       val kernel = GMM.run(points, kernelSize, distance)
+      // TODO: Use integers as keys
       val counts = mutable.HashMap[T, Long]()
+      val radii = mutable.HashMap[T, Double]()
 
       var radius = 0.0
 
@@ -61,9 +63,14 @@ object MapReduceCoreset {
         assert(minDist <= Utils.minDistance(kernel, distance),
           s"Distance: $minDist, farness: ${Utils.minDistance(kernel, distance)}")
         counts.put(kernel(minIdx), counts.getOrElse(kernel(minIdx), 0L) + 1L)
+        radii.put(kernel(minIdx), math.max(radii.getOrElse(kernel(minIdx), 0.0), minDist))
         pointIdx += 1
       }
-      new MapReduceCoreset(counts.map(WeightedPoint.fromTuple).toVector, radius)
+      new MapReduceCoreset(
+        counts.keys.map { center =>
+          ProxyPoint(center, counts(center), radii(center))
+        }.toVector,
+        radius)
     }
   }
 

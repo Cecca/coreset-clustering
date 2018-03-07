@@ -89,6 +89,7 @@ extends Coreset[T] {
 
   private val _kernel = Array.ofDim[T](kernelSize + 1)
   private val _weights = Array.ofDim[Long](_kernel.length)
+  private val _radii = Array.ofDim[Double](_kernel.length)
 
   private[clustering]
   def initializing: Boolean = _initializing
@@ -105,16 +106,17 @@ extends Coreset[T] {
   private[clustering]
   def numKernelPoints: Int = _insertionIdx
 
-  /* Only for testing */
-  private[clustering]
-  def setKernelPoint(index: Int, point: T): Unit = {
-    _kernel(index) = point
-  }
+//  /* Only for testing */
+//  private[clustering]
+//  def setKernelPoint(index: Int, point: T): Unit = {
+//    _kernel(index) = point
+//  }
 
   private[clustering]
   def addKernelPoint(point: T): Unit = {
     _kernel(_insertionIdx) = point
     _weights(_insertionIdx) = 1L
+    _radii(_insertionIdx) = 0.0
     _insertionIdx += 1
   }
 
@@ -140,6 +142,7 @@ extends Coreset[T] {
       }
     }
 
+  // TODO: Avoid this copying
   private[clustering]
   def minKernelDistance: Double = minDistance(kernelPointsIterator.toArray[T], distance)
 
@@ -199,6 +202,7 @@ extends Coreset[T] {
     } else {
       // Increment the weight of the center
       _weights(minIdx) += 1
+      _radii(minIdx) = math.max(_radii(minIdx), minDist)
       DEBUG(s"Discarded element: $this")
       assert(weightInvariant, "Weight after insertion")
       false
@@ -209,6 +213,7 @@ extends Coreset[T] {
   def swapData(i: Int, j: Int): Unit = {
     swap(_kernel, i, j)
     swap(_weights, i, j)
+    swap(_radii, i, j)
   }
 
   private[clustering]
@@ -216,6 +221,7 @@ extends Coreset[T] {
     var idx = from
     while (idx < _kernel.length) {
       _weights(idx) = 0
+      _radii(idx) = 0.0
       idx += 1
     }
   }
@@ -247,6 +253,11 @@ extends Coreset[T] {
         if (distance(pivot, _kernel(candidateIdx)) <= _threshold) {
           // Add all the weight of the to-be-discarded candidate to the pivot
           _weights(bottomIdx) += _weights(candidateIdx)
+          // update the radius as the maximum between the two.
+          // Here we are losing something because of the triangle inequality
+          // TODO: CHeck if this is an issue
+          _radii(bottomIdx) = math.max(_radii(bottomIdx), _radii(candidateIdx))
+
           // Move the candidate (and all its data) to the end of the array
           swapData(candidateIdx, topIdx)
           DEBUG(s"Discadring $candidateIdx")
@@ -301,6 +312,8 @@ extends Coreset[T] {
     res
   }
 
-  override def points: Vector[WeightedPoint[T]] =
-    kernelPointsIterator.zip(_weights.iterator).map(WeightedPoint.fromTuple).toVector
+  override def points: Vector[ProxyPoint[T]] =
+    kernelPointsIterator.zip(_weights.iterator).zip(_radii.iterator).map { case ((center, weight), radius) =>
+      ProxyPoint[T](center, weight, radius)
+    }.toVector
 }
