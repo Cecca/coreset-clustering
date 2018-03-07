@@ -1,8 +1,10 @@
 package it.unipd.dei.clustering
 
+import java.io.File
 import java.nio.file.{Files, Paths}
 
 import com.esotericsoftware.kryo.io.{Input, Output}
+import org.apache.commons.io.FileUtils
 import org.apache.hadoop.io.{BytesWritable, NullWritable}
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
@@ -25,7 +27,7 @@ object VectorIO {
     val intermediate: RDD[(BytesWritable, NullWritable)] =
       rdd.mapPartitions({ iterator =>
         iterator.map { arr => {
-            val bindata = Array.ofDim[Byte](arr.size*8 + 4)
+            val bindata = Array.ofDim[Byte](arr.length*8 + 4)
             val output = new Output(bindata)
             output.writeInt(arr.size)
             output.writeDoubles(arr)
@@ -34,7 +36,7 @@ object VectorIO {
         }
       }, preservesPartitioning = true)
 
-      intermediate.saveAsSequenceFile(path)
+      intermediate.saveAsSequenceFile(path, Some(classOf[org.apache.hadoop.io.compress.BZip2Codec]))
   }
 
   def readKryo(sc: SparkContext, path: String): RDD[Array[Double]] = {
@@ -49,7 +51,7 @@ object VectorIO {
 
   def main(args: Array[String]): Unit = {
     val path = "/tmp/vecs"
-    Files.deleteIfExists(Paths.get(path))
+    FileUtils.deleteDirectory(new File(path))
     val sc = new SparkContext("local", "test")
     val vec = Array[Double](1.0, 2.0, 3.0, 3.2123)
     val rdd: RDD[Array[Double]] = sc.parallelize(Seq(vec))

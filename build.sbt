@@ -77,6 +77,7 @@ lazy val experiments = (project in file("experiments")).
         ),
       //)
     parallelExecution in Test := false,
+    fork in Test := true
   ).
   enablePlugins(BuildInfoPlugin).
   settings(
