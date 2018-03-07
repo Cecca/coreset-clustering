@@ -1,63 +1,63 @@
 package it.unipd.dei.clustering
 
-import org.apache.avro.{Schema, SchemaBuilder}
-import org.apache.avro.mapred.AvroKey
-import org.apache.avro.mapreduce.{AvroJob, AvroKeyInputFormat, AvroKeyOutputFormat}
-import org.apache.hadoop.io.NullWritable
-import org.apache.hadoop.mapreduce.Job
+import java.nio.file.{Files, Paths}
+
+import com.esotericsoftware.kryo.io.{Input, Output}
+import org.apache.hadoop.io.{BytesWritable, NullWritable}
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 
-import scala.collection.mutable.ArrayBuffer
-
 object VectorIO {
 
-  val schema: Schema = new Schema.Parser().parse(
-    """
-      |{
-      |  "type": "record",
-      |  "namespace": "it.unipd.dei.clustering",
-      |  "name": "Vector",
-      |  "fields": [
-      |    { "name": "data", "type": "array", "items": "double" },
-      |  ]
-      |}
-    """.stripMargin)
-
-  def write(vecs: RDD[Array[Double]], output: String): Unit = {
-    val job = Job.getInstance()
-//    val schema = Schema.createArray(Schema.create(Schema.Type.DOUBLE))
-    println(s"Schema is \n${schema.toString(true)}")
-    AvroJob.setOutputKeySchema(job, schema)
-
-    vecs.map{ v =>
-      (new AvroKey[Array[Double]](v), null)
-    }.saveAsNewAPIHadoopFile(
-      output,
-      classOf[AvroKey[Array[Double]]],
-      classOf[NullWritable],
-      classOf[AvroKeyOutputFormat[Array[Double]]],
-      job.getConfiguration
-    )
+  def writeText(rdd: RDD[Array[Double]], path: String): Unit = {
+    rdd.map { arr =>
+      arr.mkString(",")
+    }.saveAsTextFile(path)
   }
 
-  def read(sc: SparkContext, path: String): RDD[Array[Double]] = {
-    val job = Job.getInstance()
-//    val schema = Schema.createArray(Schema.create(Schema.Type.DOUBLE))
-    AvroJob.setInputKeySchema(job, schema)
-    sc.newAPIHadoopFile(
-      path,
-      classOf[AvroKeyInputFormat[Array[Double]]],
-      classOf[AvroKey[Array[Double]]],
-      classOf[NullWritable],
-      job.getConfiguration
-    ).map { case (k, _) =>
-      val buf = ArrayBuffer[Double]()
-      for (d <- k.datum()) {
-        buf += d
-      }
-      buf.toArray
+  def readText(sc: SparkContext, path: String): RDD[Array[Double]] = {
+    sc.textFile(path).map { line =>
+      line.split(",").map(_.toDouble)
     }
+  }
+
+  def writeKryo(rdd: RDD[Array[Double]], path: String): Unit = {
+    val intermediate: RDD[(BytesWritable, NullWritable)] =
+      rdd.mapPartitions({ iterator =>
+        iterator.map { arr => {
+            val bindata = Array.ofDim[Byte](arr.size*8 + 4)
+            val output = new Output(bindata)
+            output.writeInt(arr.size)
+            output.writeDoubles(arr)
+            (new BytesWritable(bindata), NullWritable.get())
+          }
+        }
+      }, preservesPartitioning = true)
+
+      intermediate.saveAsSequenceFile(path)
+  }
+
+  def readKryo(sc: SparkContext, path: String): RDD[Array[Double]] = {
+    sc.sequenceFile(path, classOf[BytesWritable], classOf[NullWritable])
+      .mapPartitions({ _.map { case (bytes, _) =>
+          val input = new Input(bytes.getBytes)
+          val size = input.readInt()
+          input.readDoubles(size)
+        }
+      }, preservesPartitioning = true)
+  }
+
+  def main(args: Array[String]): Unit = {
+    val path = "/tmp/vecs"
+    Files.deleteIfExists(Paths.get(path))
+    val sc = new SparkContext("local", "test")
+    val vec = Array[Double](1.0, 2.0, 3.0, 3.2123)
+    val rdd: RDD[Array[Double]] = sc.parallelize(Seq(vec))
+    println("Writing")
+    writeKryo(rdd, path)
+    println("Reading")
+    val readback = readKryo(sc, path)
+    print(readback.take(1).head.mkString(" | "))
   }
 
 }

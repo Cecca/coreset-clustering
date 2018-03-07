@@ -73,10 +73,10 @@ lazy val experiments = (project in file("experiments")).
           "it.unipd.dei" % "experiment-reporter" % "0.3.0",
           "org.rogach" %% "scallop" % "3.1.1",
           "org.apache.spark" %% "spark-core" % "2.2.0",// % "provided",
-          "org.apache.spark" %% "spark-mllib" % "2.2.0",// % "provided",
-          "com.databricks" %% "spark-avro" % "4.0.0"
-        )
+          "org.apache.spark" %% "spark-mllib" % "2.2.0"// % "provided",
+        ),
       //)
+    parallelExecution in Test := false,
   ).
   enablePlugins(BuildInfoPlugin).
   settings(

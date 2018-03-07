@@ -19,7 +19,7 @@ object Main {
     val sparkConf = new SparkConf(loadDefaults = true).setAppName("vectorize")
     val sc = new SparkContext(sparkConf)
 
-    val vecs = VectorIO.read(sc, arguments.input())
+    val vecs = VectorIO.readText(sc, arguments.input())
     println(s"Loaded ${vecs.count()} vectors")
 
     val lVecs = vecs.collect().map(WeightedPoint(_, 1L))

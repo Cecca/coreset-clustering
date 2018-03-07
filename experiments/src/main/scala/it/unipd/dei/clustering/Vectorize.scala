@@ -61,7 +61,7 @@ object Vectorize {
       vec
     }
 
-    VectorIO.write(vecs, arguments.output())
+    VectorIO.writeText(vecs, arguments.output())
 
   }
 
