@@ -16,16 +16,16 @@ object Main {
 
     val arguments = new Args(args)
 
-    val sparkConf = new SparkConf(loadDefaults = true).setAppName("vectorize")
+    val sparkConf = new SparkConf(loadDefaults = true).setAppName("Clustering")
     val sc = new SparkContext(sparkConf)
 
-    val vecs = VectorIO.readText(sc, arguments.input())
+    val vecs = VectorIO.readKryo(sc, arguments.input())
     println(s"Loaded ${vecs.count()} vectors")
 
     val lVecs = vecs.collect().map(WeightedPoint(_, 1L))
-    val (centers, outliers) = Outliers.run(lVecs, arguments.k(), arguments.z(), VectorUtils.sqdist _)
-    println(centers.mkString(", "))
-    println(s"There are ${outliers.size} outliers")
+    val (centers, outliers) = Algorithm.mapReduce(vecs, arguments.k(), arguments.k(), arguments.z(), VectorUtils.sqdist)
+    val radius = Utils.maxMinDistance(lVecs.map(_.point), centers, VectorUtils.sqdist)
+    println(s"There are ${outliers.size} outliers, the radius is $radius")
   }
 
 }

@@ -20,6 +20,7 @@ import java.util.ConcurrentModificationException
 
 import com.codahale.metrics.MetricRegistry
 import it.unipd.dei.clustering.Utils._
+import it.unipd.dei.clustering.Debug.DEBUG
 
 import scala.reflect.ClassTag
 
@@ -218,11 +219,6 @@ extends Coreset[T] {
       idx += 1
     }
   }
-
-  private def DEBUG(str: String): Unit =
-    if (false) {
-      println(str)
-    }
 
   private[clustering]
   def merge(): Unit = {

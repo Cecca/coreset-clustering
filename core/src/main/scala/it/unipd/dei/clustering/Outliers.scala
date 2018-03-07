@@ -1,5 +1,7 @@
 package it.unipd.dei.clustering
 
+import it.unipd.dei.clustering.Debug.DEBUG
+
 import scala.collection.mutable
 
 object Outliers {
@@ -27,7 +29,7 @@ object Outliers {
         }
         (nCov, idx)
       }).maxBy(_._1)._2
-      println(s"selected $center as center")
+      DEBUG(s"selected $center as center")
 
       centers.append(points(center).point)
 
@@ -68,12 +70,12 @@ object Outliers {
     var sol: IndexedSeq[T] = Vector.empty[T]
     var outliers: IndexedSeq[T] = Vector.empty[T]
 
-    println("============================================")
-    println(s"Lower ${candidates(lower)} upper ${candidates(upper)} ($upper candidates)")
+    DEBUG("============================================")
+    DEBUG(s"Lower ${candidates(lower)} upper ${candidates(upper)} ($upper candidates)")
 
     while (lower < upper-1) {
       val mid: Int = (lower + upper) / 2
-      println(s"Testing ${candidates(mid)} (lower $lower current $mid upper $upper)")
+      DEBUG(s"Testing ${candidates(mid)} (lower $lower current $mid upper $upper)")
       val (tmpSol, tmpOutliers) = run(points, k, candidates(lower), distances)
       sol = tmpSol
       outliers = tmpOutliers
