@@ -30,7 +30,7 @@ object Main {
     val (centers, outliers, radius) = Algorithm.mapReduce(
       vecs, arguments.k(), arguments.tau(), arguments.z(), dist)
 
-    println(s"There are ${outliers.size} outliers, the radius is $radius")
+    println(s"The radius is $radius")
   }
 
 }

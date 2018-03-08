@@ -9,25 +9,15 @@ object Algorithm {
 
   def radius[T:ClassTag](allPoints: RDD[T],
                          centers: IndexedSeq[ProxyPoint[T]],
-                         coveringRadius: Double,
+                         z: Int,
                          distance: (T, T) => Double): Double = {
     val bCenters = allPoints.context.broadcast(centers)
-    val result = allPoints.flatMap({p =>
-      val minDist = bCenters.value.iterator.map({c => distance(c.point, p)}).min
-      if (minDist > coveringRadius) {
-        Iterator.empty // This is an outlier
-      } else {
-        Iterator.single(minDist)
-      }
-    }).max()
 
-    val actualOutliers = allPoints.filter({ p=>
-      bCenters.value.iterator.map({c => distance(c.point, p)}).min > coveringRadius
-    }).count()
+    val topDists = allPoints.map({ p =>
+      bCenters.value.map {c => distance(c.point, p)}.min
+    }).top(z+1)
 
-    DEBUG(s"There are actually $actualOutliers outliers using covering radius $coveringRadius")
-
-    result
+    topDists.last
   }
 
   def mapReduce[T:ClassTag](rdd: RDD[T], k: Int, tau: Int, distance: (T, T) => Double): IndexedSeq[ProxyPoint[T]] = {
@@ -48,10 +38,8 @@ object Algorithm {
       MapReduceCoreset.compose(a, b)
     }
     val (centers, outliers, radiusOnProxies) = Outliers.run(coreset.points, k, z, distance)
-    val coresetRadius = coreset.points.iterator.map(_.radius).max
-    DEBUG(s"Radius of coreset is $coresetRadius")
 
-    (centers, outliers, radius(rdd, centers, radiusOnProxies + coresetRadius, distance))
+    (centers, outliers, radius(rdd, centers, z, distance))
   }
 
   def streaming[T:ClassTag](stream: Iterator[T], k: Int, tau: Int, distance: (T, T) => Double): IndexedSeq[ProxyPoint[T]] = {
