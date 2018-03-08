@@ -23,9 +23,8 @@ object Main {
     val vecs = VectorIO.readKryo(sc, arguments.input())
     println(s"Loaded ${vecs.count()} vectors")
 
-    val (centers, outliers) = Algorithm.mapReduce(vecs, arguments.k(), arguments.k(), arguments.z(), VectorUtils.sqdist)
+    val (centers, outliers, radius) = Algorithm.mapReduce(vecs, arguments.k(), arguments.k(), arguments.z(), VectorUtils.sqdist)
 
-    val radius = Algorithm.radius(vecs, centers, outliers, VectorUtils.sqdist)
     println(s"There are ${outliers.size} outliers, the radius is $radius")
   }
 

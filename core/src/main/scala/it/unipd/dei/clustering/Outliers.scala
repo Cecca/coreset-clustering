@@ -49,7 +49,7 @@ object Outliers {
   }
 
   def run[T](points: IndexedSeq[ProxyPoint[T]], k: Int, z: Int, distance: (T, T) => Double)
-  : (IndexedSeq[ProxyPoint[T]], IndexedSeq[ProxyPoint[T]]) = {
+  : (IndexedSeq[ProxyPoint[T]], IndexedSeq[ProxyPoint[T]], Double) = {
     val n = points.size
 
     val candidatesSet = mutable.SortedSet[Double]()
@@ -77,6 +77,13 @@ object Outliers {
       i += 1
     }
 
+    val outliersSet = outliers.toSet
+    val actualRadius = points.iterator.filterNot(outliersSet.contains).map({ p => {
+      sol.iterator.map({c => distance(c.point, p.point)}).min
+    }}).max
+
+    DEBUG(s"Radius of clustering on proxy set: $actualRadius")
+
 //    // Do a binary search to find the right value
 //    var upper = candidates.length - 1
 //    var lower = 0
@@ -98,7 +105,7 @@ object Outliers {
 //      }
 //    }
 
-    (sol, outliers)
+    (sol, outliers, actualRadius)
   }
 
 }

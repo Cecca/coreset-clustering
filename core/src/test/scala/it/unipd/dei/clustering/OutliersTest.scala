@@ -14,7 +14,7 @@ class OutliersTest extends Properties("Outliers algorithm") {
     { (pts: List[Double], k: Int, z: Int) =>
       (pts.length >= 2 && k < pts.size && z < pts.size) ==> {
         val points = pts.map(p => ProxyPoint.fromPoint(Point(p))).toArray
-        val (result, outliers) = Outliers.run(points, k, z, distance)
+        val (result, outliers, algorithmRadius) = Outliers.run(points, k, z, distance)
         val resultGMM = GMM.run(points.map(_.point), k + z, distance)
 
         val radius = maxMinDistance(result.map(_.point), points.map(_.point).toSet.diff(outliers.map(_.point).toSet).toVector, distance)
