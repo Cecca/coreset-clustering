@@ -14,7 +14,7 @@ lazy val commonSettings = baseSettings ++ Seq(
   test in assembly := {},
   scalacOptions := Seq(
     "-optimise",
-//    "-Xdisable-assertions",
+    "-Xdisable-assertions",
     "-feature",
     "-deprecation",
     "-unchecked"))
