@@ -3,6 +3,7 @@ package it.unipd.dei.clustering
 import java.io.{FileInputStream, InputStream}
 
 import org.apache.commons.compress.compressors.CompressorStreamFactory
+import org.apache.spark.ml.linalg.Vectors
 import org.apache.spark.{SparkConf, SparkContext}
 import org.rogach.scallop.ScallopConf
 
@@ -58,7 +59,7 @@ object Vectorize {
       for (i <- vec.indices) {
         vec(i) = vec(i) / cnt
       }
-      vec
+      Vectors.dense(vec)
     }
 
     VectorIO.writeText(vecs, arguments.output())

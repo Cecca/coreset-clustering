@@ -1,5 +1,6 @@
 package it.unipd.dei.clustering
 
+import org.apache.spark.ml.linalg.{Vectors, Vector}
 import org.apache.spark.{SparkConf, SparkContext}
 import org.rogach.scallop.ScallopConf
 
@@ -24,7 +25,10 @@ object Main {
     val vecs = VectorIO.readKryo(sc, arguments.input()).repartition(8).cache()
     println(s"Loaded ${vecs.count()} vectors")
 
-    val (centers, outliers, radius) = Algorithm.mapReduce(vecs, arguments.k(), arguments.tau(), arguments.z(), VectorUtils.sqdist)
+    val dist: (Vector, Vector) => Double = {case (a, b) => math.sqrt(Vectors.sqdist(a, b))}
+
+    val (centers, outliers, radius) = Algorithm.mapReduce(
+      vecs, arguments.k(), arguments.tau(), arguments.z(), dist)
 
     println(s"There are ${outliers.size} outliers, the radius is $radius")
   }

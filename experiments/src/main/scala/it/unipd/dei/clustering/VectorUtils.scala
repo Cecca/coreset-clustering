@@ -1,5 +1,7 @@
 package it.unipd.dei.clustering
 
+import org.apache.spark.ml.linalg.Vector
+
 object VectorUtils {
 
   def sum(a: Array[Double], b: Array[Double], result: Array[Double]): Unit = {
