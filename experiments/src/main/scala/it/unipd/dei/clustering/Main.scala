@@ -9,6 +9,7 @@ object Main {
     val input = opt[String](required = true)
     val k = opt[Int](required = true)
     val z = opt[Int](required = true)
+    val tau = opt[Int](required = false, default = k.toOption)
     verify()
   }
 
@@ -20,10 +21,10 @@ object Main {
     val sparkConf = new SparkConf(loadDefaults = true).setAppName("Clustering")
     val sc = new SparkContext(sparkConf)
 
-    val vecs = VectorIO.readKryo(sc, arguments.input())
+    val vecs = VectorIO.readKryo(sc, arguments.input()).repartition(8).cache()
     println(s"Loaded ${vecs.count()} vectors")
 
-    val (centers, outliers, radius) = Algorithm.mapReduce(vecs, arguments.k(), arguments.k(), arguments.z(), VectorUtils.sqdist)
+    val (centers, outliers, radius) = Algorithm.mapReduce(vecs, arguments.k(), arguments.tau(), arguments.z(), VectorUtils.sqdist)
 
     println(s"There are ${outliers.size} outliers, the radius is $radius")
   }

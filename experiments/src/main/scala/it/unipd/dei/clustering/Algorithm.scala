@@ -6,7 +6,7 @@ import org.apache.spark.rdd.RDD
 import scala.reflect.ClassTag
 
 object Algorithm {
-  
+
   def radius[T:ClassTag](allPoints: RDD[T],
                          centers: IndexedSeq[ProxyPoint[T]],
                          coveringRadius: Double,

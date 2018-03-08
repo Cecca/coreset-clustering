@@ -16,6 +16,8 @@
 
 package it.unipd.dei.clustering
 
+import it.unipd.dei.clustering.Debug.DEBUG
+
 import scala.collection.mutable.ArrayBuffer
 import scala.reflect.ClassTag
 import scala.util.Random
@@ -44,6 +46,7 @@ object GMM {
     if (points.length <= k) {
       points
     } else {
+      DEBUG(s"Clustering ${points.size} points with $k centers")
       val minDist = Array.fill(points.size)(Double.PositiveInfinity)
       val result = Array.ofDim[T](k)
       // Init the result with an arbitrary point
