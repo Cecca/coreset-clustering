@@ -6,7 +6,8 @@ import scala.collection.mutable
 
 object Outliers {
 
-  def run[T](points: IndexedSeq[ProxyPoint[T]], k: Int, r: Double, distances: Array[Array[Double]])
+  // Takes as a parameter proxyRadius in order not to recompute it every time.
+  def run[T](points: IndexedSeq[ProxyPoint[T]], k: Int, r: Double, proxyRadius: Double, distances: Array[Array[Double]])
   : (IndexedSeq[ProxyPoint[T]], IndexedSeq[ProxyPoint[T]]) = {
     val n = points.size
     val centers = new mutable.ArrayBuffer[ProxyPoint[T]]()
@@ -22,7 +23,7 @@ object Outliers {
         var nCov = 0L
         var j = 0
         while (j < n) {
-          if (!covered(j) && distances(idx)(j) <= r) {
+          if (!covered(j) && distances(idx)(j) <= r + 2*proxyRadius) {
             nCov += points(j).weight
           }
           j += 1
@@ -35,10 +36,11 @@ object Outliers {
       // Mark points in the large disk as covered
       for (j <- 0 until n) {
         if (!covered(j)) {
-          covered(j) = distances(center)(j) <= 3*r
+          covered(j) = distances(center)(j) <= 3*r + 4*proxyRadius
         }
       }
-      DEBUG(s"Selected $center as center | now there are ${covered.count(!_)} uncovered points")
+      DEBUG(s"Selected $center as center | " +
+        s"now the uncovered weight is ${points.zip(covered).filter(!_._2).map(_._1.weight).sum} (${covered.count(!_)} proxies)")
       iteration += 1
     }
 
@@ -51,6 +53,9 @@ object Outliers {
   def run[T](points: IndexedSeq[ProxyPoint[T]], k: Int, z: Int, distance: (T, T) => Double)
   : (IndexedSeq[ProxyPoint[T]], IndexedSeq[ProxyPoint[T]], Double) = {
     val n = points.size
+
+    val proxyRadius = points.iterator.map(_.radius).max
+    DEBUG(s"The proxies radius is $proxyRadius")
 
     val candidatesSet = mutable.SortedSet[Double]()
 
@@ -69,11 +74,11 @@ object Outliers {
     var outliers: IndexedSeq[ProxyPoint[T]] = points
 
     var i = 0
-    while (outliers.size > z) {
-      val (tmpSol, tmpOutliers) = run(points, k, candidates(i), distances)
+    while (outliers.map(_.weight).sum > z) {
+      val (tmpSol, tmpOutliers) = run(points, k, candidates(i), proxyRadius, distances)
       sol = tmpSol
       outliers = tmpOutliers
-      DEBUG(s"Candidate $i : ${candidates(i)} : outliers=${outliers.size}")
+      DEBUG(s"Candidate $i : ${candidates(i)} : outliers weight=${outliers.map(_.weight).sum} (${outliers.size} proxies)")
       i += 1
     }
 
