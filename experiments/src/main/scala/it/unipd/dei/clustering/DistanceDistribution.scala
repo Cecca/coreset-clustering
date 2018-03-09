@@ -93,7 +93,8 @@ object DistanceDistribution {
 
 
     println("\n\nProxies that cover few points")
-    val lowPercIdx = arguments.lowPercentile() * dCoreset.count()
+    val lowPercIdx = (arguments.lowPercentile() * dCoreset.count()).toInt
+    println(s"Low percentile index $lowPercIdx")
 
     val lowPercWeight = dCoreset
       .zipWithIndex()
@@ -106,7 +107,7 @@ object DistanceDistribution {
 
     println(s"Collected ${potentialOutliers.count()} proxies of potential outliers (weight <= $lowPercWeight)")
 
-    val highPercIdx = arguments.highPercentile() * dCoreset.count()
+    val highPercIdx = (arguments.highPercentile() * dCoreset.count()).toInt
 
     val highPercWeight = dCoreset
       .zipWithIndex()
