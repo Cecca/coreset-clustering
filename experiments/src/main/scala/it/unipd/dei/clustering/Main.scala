@@ -11,6 +11,8 @@ object Main {
     val k = opt[Int](required = true)
     val z = opt[Int](required = false)
     val tau = opt[Int](required = false, default = k.toOption)
+    val algorithm = opt[String](required = false, default = Some("mapreduce"))
+    val forceGmm = toggle(default = Some(false))
     verify()
   }
 
@@ -27,15 +29,20 @@ object Main {
 
     val dist: (Vector, Vector) => Double = {case (a, b) => math.sqrt(Vectors.sqdist(a, b))}
 
+    val coreset = arguments.algorithm() match {
+      case "mapreduce" =>
+        Algorithm.mapReduce(vecs, arguments.tau() + arguments.tau.getOrElse(0), dist)
+      case "streaming" =>
+        Algorithm.streaming(vecs.toLocalIterator, arguments.tau() + arguments.tau.getOrElse(0), dist)
+    }
+
     val centers: IndexedSeq[ProxyPoint[Vector]] =
-      arguments.z.toOption match {
-        case Some(z) =>
-          val (centers, outliers) = Algorithm.mapReduce(
-            vecs, arguments.k(), arguments.tau(), arguments.z(), dist)
-          centers
-        case None =>
-          Algorithm.mapReduce(
-            vecs, arguments.k(), arguments.tau(), dist)
+      (arguments.z.toOption, arguments.forceGmm()) match {
+        case (Some(z), false) =>
+          Outliers.run(coreset.points, arguments.k(), z, dist)._1
+        case (_, true) =>
+          val centers = GMM.run(coreset.points.map(_.point), arguments.k(), dist)
+          centers.map(ProxyPoint.fromPoint)
       }
 
     val radius = Algorithm.radius(vecs, centers, arguments.z.getOrElse(0), dist)
