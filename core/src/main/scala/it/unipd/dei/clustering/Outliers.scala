@@ -61,7 +61,7 @@ object Outliers {
 
     val distances = Array.ofDim[Double](n, n)
     for (i <- 0 until n) {
-      for (j <- i until n) {
+      for (j <- (i+1) until n) {
         val d = distance(points(i).point, points(j).point)
         candidatesSet += d
         distances(i)(j) = d
