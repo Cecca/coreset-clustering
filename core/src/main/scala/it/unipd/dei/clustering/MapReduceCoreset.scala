@@ -39,42 +39,24 @@ object MapReduceCoreset {
     if (points.length < kernelSize) {
       new MapReduceCoreset(points.map(ProxyPoint.fromPoint).toVector, 0.0)
     } else {
-      val kernel = GMM.run(points, kernelSize, distance)
+      val (assignement, distances) = GMM.runWithAssignement(points, kernelSize, distance)
       DEBUG("Computed kernel")
-      // TODO: Use integers as keys
-      val counts = mutable.HashMap[T, Long]()
-      val radii = mutable.HashMap[T, Double]()
-
-      var radius = 0.0
-
-      DEBUG("Assigning points")
-      var pointIdx = 0
-      while (pointIdx < points.length) {
-        // Find the closest center
-        var centerIdx = 0
-        var minDist = Double.PositiveInfinity
-        var minIdx = -1
-        while (centerIdx < kernel.length) {
-          val dist = distance(points(pointIdx), kernel(centerIdx))
-          if (dist < minDist) {
-            minDist = dist
-            minIdx = centerIdx
-          }
-          centerIdx += 1
-        }
-        radius = math.max(radius, minDist)
-        assert(minDist <= Utils.minDistance(kernel, distance),
-          s"Distance: $minDist, farness: ${Utils.minDistance(kernel, distance)}")
-        counts.put(kernel(minIdx), counts.getOrElse(kernel(minIdx), 0L) + 1L)
-        radii.put(kernel(minIdx), math.max(radii.getOrElse(kernel(minIdx), 0.0), minDist))
-        pointIdx += 1
-      }
       DEBUG("Building result corest")
-      new MapReduceCoreset(
-        counts.keys.map { center =>
-          ProxyPoint(center, counts(center), radii(center))
-        }.toVector,
-        radius)
+      val counts = Array.fill[Int](points.length)(0)
+      val radii = Array.fill[Double](points.length)(0.0)
+      var i = 0
+      while(i < points.length) {
+        counts(assignement(i)) += 1
+        radii(assignement(i)) = math.max(radii(assignement(i)), distances(i))
+        i += 1
+      }
+      val proxies = assignement.indices
+        .filter(i => assignement(i) == i)
+        .map { i =>
+          ProxyPoint(points(i), counts(i), radii(i))
+        }.toVector
+      val radius = radii.max
+      new MapReduceCoreset(proxies, radius)
     }
   }
 
