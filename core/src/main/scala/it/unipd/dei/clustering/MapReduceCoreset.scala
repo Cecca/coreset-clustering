@@ -16,9 +16,10 @@
 
 package it.unipd.dei.clustering
 
+import it.unipd.dei.clustering.Debug.DEBUG
+
 import scala.collection.mutable
 import scala.reflect.ClassTag
-
 class MapReduceCoreset[T:ClassTag](val points: Vector[ProxyPoint[T]],
                                    val radius: Double)
 extends Coreset[T] with Serializable {
@@ -39,12 +40,14 @@ object MapReduceCoreset {
       new MapReduceCoreset(points.map(ProxyPoint.fromPoint).toVector, 0.0)
     } else {
       val kernel = GMM.run(points, kernelSize, distance)
+      DEBUG("Computed kernel")
       // TODO: Use integers as keys
       val counts = mutable.HashMap[T, Long]()
       val radii = mutable.HashMap[T, Double]()
 
       var radius = 0.0
 
+      DEBUG("Assigning points")
       var pointIdx = 0
       while (pointIdx < points.length) {
         // Find the closest center
@@ -66,6 +69,7 @@ object MapReduceCoreset {
         radii.put(kernel(minIdx), math.max(radii.getOrElse(kernel(minIdx), 0.0), minDist))
         pointIdx += 1
       }
+      DEBUG("Building result corest")
       new MapReduceCoreset(
         counts.keys.map { center =>
           ProxyPoint(center, counts(center), radii(center))
