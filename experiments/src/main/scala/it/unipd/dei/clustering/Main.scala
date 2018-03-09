@@ -31,9 +31,9 @@ object Main {
 
     val coreset = arguments.algorithm() match {
       case "mapreduce" =>
-        Algorithm.mapReduce(vecs, arguments.tau() + arguments.tau.getOrElse(0), dist)
+        Algorithm.mapReduce(vecs, arguments.tau() + arguments.z.getOrElse(0), dist)
       case "streaming" =>
-        Algorithm.streaming(vecs.toLocalIterator, arguments.tau() + arguments.tau.getOrElse(0), dist)
+        Algorithm.streaming(vecs.toLocalIterator, arguments.tau() + arguments.z.getOrElse(0), dist)
     }
 
     val centers: IndexedSeq[ProxyPoint[Vector]] =
