@@ -34,6 +34,8 @@ object Main {
         Algorithm.mapReduce(vecs, arguments.tau() + arguments.z.getOrElse(0), dist)
       case "streaming" =>
         Algorithm.streaming(vecs.toLocalIterator, arguments.tau() + arguments.z.getOrElse(0), dist)
+      case "random" =>
+        Algorithm.randomCoreset(vecs, arguments.tau() + arguments.z.getOrElse(0), dist)
     }
 
     val centers: IndexedSeq[ProxyPoint[Vector]] =
