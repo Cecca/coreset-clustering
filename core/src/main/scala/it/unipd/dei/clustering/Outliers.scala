@@ -39,8 +39,8 @@ object Outliers {
           covered(j) = distances(center)(j) <= 3*r + 4*proxyRadius
         }
       }
-      DEBUG(s"Selected $center as center | " +
-        s"now the uncovered weight is ${points.zip(covered).filter(!_._2).map(_._1.weight).sum} (${covered.count(!_)} proxies)")
+//      DEBUG(s"Selected $center as center | " +
+//        s"now the uncovered weight is ${points.zip(covered).filter(!_._2).map(_._1.weight).sum} (${covered.count(!_)} proxies)")
       iteration += 1
     }
 
@@ -72,14 +72,28 @@ object Outliers {
 
     var sol: IndexedSeq[ProxyPoint[T]] = Vector.empty[ProxyPoint[T]]
     var outliers: IndexedSeq[ProxyPoint[T]] = points
+    
+    // Do a binary search to find the right value
+    var upper = candidates.length - 1
+    var lower = 0
 
-    var i = 0
-    while (outliers.map(_.weight).sum > z) {
-      val (tmpSol, tmpOutliers) = run(points, k, candidates(i), proxyRadius, distances)
+    DEBUG("============================================")
+    DEBUG(s"Lower ${candidates(lower)} upper ${candidates(upper)} ($upper candidates)")
+
+    while (lower < upper-1) {
+      val mid: Int = (lower + upper) / 2
+      DEBUG(s"Testing ${candidates(mid)} (lower $lower current $mid upper $upper)")
+      val (tmpSol, tmpOutliers) = run(points, k, candidates(mid), proxyRadius, distances)
       sol = tmpSol
       outliers = tmpOutliers
-      DEBUG(s"Candidate $i : ${candidates(i)} : outliers weight=${outliers.map(_.weight).sum} (${outliers.size} proxies)")
-      i += 1
+      DEBUG(s"Outliers ${outliers.size} (max $z)")
+      if (outliers.size > z) {
+        DEBUG("Too many outliers, raising the lower bound")
+        lower = mid
+      } else {
+        DEBUG("Too few outliers, lowering upper bound")
+        upper = mid
+      }
     }
 
     val outliersSet = outliers.toSet
@@ -88,27 +102,6 @@ object Outliers {
     }}).max
 
     DEBUG(s"Radius of clustering on proxy set (excluding outliers): $actualRadius")
-
-//    // Do a binary search to find the right value
-//    var upper = candidates.length - 1
-//    var lower = 0
-//
-//    DEBUG("============================================")
-//    DEBUG(s"Lower ${candidates(lower)} upper ${candidates(upper)} ($upper candidates)")
-//
-//    while (lower < upper-1) {
-//      val mid: Int = (lower + upper) / 2
-//      DEBUG(s"Testing ${candidates(mid)} (lower $lower current $mid upper $upper)")
-//      val (tmpSol, tmpOutliers) = run(points, k, candidates(lower), distances)
-//      sol = tmpSol
-//      outliers = tmpOutliers
-//      DEBUG(s"Outliers ${outliers.size} (max $z) : $outliers")
-//      if (outliers.size > z) {
-//        lower = mid
-//      } else {
-//        upper = mid
-//      }
-//    }
 
     (sol, outliers)
   }
