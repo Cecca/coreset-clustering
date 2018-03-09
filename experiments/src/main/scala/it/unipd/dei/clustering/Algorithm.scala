@@ -31,15 +31,13 @@ object Algorithm {
   }
 
   def mapReduce[T:ClassTag](rdd: RDD[T], k: Int, tau: Int, z: Int, distance: (T, T) => Double)
-  : (IndexedSeq[ProxyPoint[T]], IndexedSeq[ProxyPoint[T]], Double) = {
+  : (IndexedSeq[ProxyPoint[T]], IndexedSeq[ProxyPoint[T]]) = {
     val coreset = rdd.glom().map { points =>
       MapReduceCoreset.run(points, tau + z, distance)
     }.reduce { case (a, b) =>
       MapReduceCoreset.compose(a, b)
     }
-    val (centers, outliers, radiusOnProxies) = Outliers.run(coreset.points, k, z, distance)
-
-    (centers, outliers, radius(rdd, centers, z, distance))
+    Outliers.run(coreset.points, k, z, distance)
   }
 
   def streaming[T:ClassTag](stream: Iterator[T], k: Int, tau: Int, distance: (T, T) => Double): IndexedSeq[ProxyPoint[T]] = {
@@ -50,13 +48,13 @@ object Algorithm {
     GMM.run(coreset.points.map(_.point), k, distance).map(ProxyPoint.fromPoint)
   }
 
-//  def streaming[T:ClassTag](stream: Iterator[T], k: Int, tau: Int, z: Int, distance: (T, T) => Double)
-//  : (IndexedSeq[ProxyPoint[T]], IndexedSeq[ProxyPoint[T]]) = {
-//    val coreset = new StreamingCoreset[T](tau + z, distance)
-//    while(stream.hasNext) {
-//      coreset.update(stream.next())
-//    }
-//    Outliers.run(coreset.points, k, z, distance)
-//  }
+  def streaming[T:ClassTag](stream: Iterator[T], k: Int, tau: Int, z: Int, distance: (T, T) => Double)
+  : (IndexedSeq[ProxyPoint[T]], IndexedSeq[ProxyPoint[T]]) = {
+    val coreset = new StreamingCoreset[T](tau + z, distance)
+    while(stream.hasNext) {
+      coreset.update(stream.next())
+    }
+    Outliers.run(coreset.points, k, z, distance)
+  }
 
 }

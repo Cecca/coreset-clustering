@@ -27,8 +27,10 @@ object Main {
 
     val dist: (Vector, Vector) => Double = {case (a, b) => math.sqrt(Vectors.sqdist(a, b))}
 
-    val (centers, outliers, radius) = Algorithm.mapReduce(
+    val (centers, outliers) = Algorithm.mapReduce(
       vecs, arguments.k(), arguments.tau(), arguments.z(), dist)
+
+    val radius = Algorithm.radius(vecs, centers, arguments.z(), dist)
 
     println(s"The radius is $radius")
   }
