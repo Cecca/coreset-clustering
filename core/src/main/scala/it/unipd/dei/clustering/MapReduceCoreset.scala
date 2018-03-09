@@ -33,30 +33,34 @@ object MapReduceCoreset {
       a.points ++ b.points,
       math.max(a.radius, b.radius))
 
+  def fromAssignment[T:ClassTag](points: Array[T], assignment: Array[Int], distances: Array[Double]): MapReduceCoreset[T] = {
+    val counts = Array.fill[Int](points.length)(0)
+    val radii = Array.fill[Double](points.length)(0.0)
+    var i = 0
+    while(i < points.length) {
+      counts(assignment(i)) += 1
+      radii(assignment(i)) = math.max(radii(assignment(i)), distances(i))
+      i += 1
+    }
+    val proxies = assignment.indices
+      .filter(i => assignment(i) == i)
+      .map { i =>
+        ProxyPoint(points(i), counts(i), radii(i))
+      }.toVector
+    val radius = radii.max
+    new MapReduceCoreset(proxies, radius)
+  }
+
   def run[T:ClassTag](points: Array[T],
                       kernelSize: Int,
                       distance: (T, T) => Double): MapReduceCoreset[T] = {
     if (points.length < kernelSize) {
       new MapReduceCoreset(points.map(ProxyPoint.fromPoint).toVector, 0.0)
     } else {
-      val (assignement, distances) = GMM.runWithAssignement(points, kernelSize, distance)
+      val (assignment, distances) = GMM.runWithAssignement(points, kernelSize, distance)
       DEBUG("Computed kernel")
       DEBUG("Building result corest")
-      val counts = Array.fill[Int](points.length)(0)
-      val radii = Array.fill[Double](points.length)(0.0)
-      var i = 0
-      while(i < points.length) {
-        counts(assignement(i)) += 1
-        radii(assignement(i)) = math.max(radii(assignement(i)), distances(i))
-        i += 1
-      }
-      val proxies = assignement.indices
-        .filter(i => assignement(i) == i)
-        .map { i =>
-          ProxyPoint(points(i), counts(i), radii(i))
-        }.toVector
-      val radius = radii.max
-      new MapReduceCoreset(proxies, radius)
+      fromAssignment(points, assignment, distances)
     }
   }
 
