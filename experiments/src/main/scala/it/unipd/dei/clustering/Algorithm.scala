@@ -13,11 +13,15 @@ object Algorithm {
                          distance: (T, T) => Double): Double = {
     val bCenters = allPoints.context.broadcast(centers)
 
-    val topDists = allPoints.map({ p =>
+    val distances = allPoints.map({ p =>
       bCenters.value.map {c => distance(c.point, p)}.min
-    }).top(z+1)
+    })
 
-    topDists.last
+    if (z == 0) {
+      distances.max()
+    } else {
+      distances.top(z+1).last
+    }
   }
 
   def mapReduce[T:ClassTag](rdd: RDD[T], k: Int, tau: Int, distance: (T, T) => Double): IndexedSeq[ProxyPoint[T]] = {
