@@ -1,6 +1,5 @@
 package it.unipd.dei.clustering
 
-import it.unipd.dei.clustering.Debug.DEBUG
 import org.apache.spark.rdd.RDD
 
 import scala.reflect.ClassTag
