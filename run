@@ -18,5 +18,5 @@ java \
 	-Dspark.master="local[*]" \
 	-Xmx4G \
 	-XX:+UseG1GC \
-	-cp $CLASSPATH it.unipd.dei.clustering.Main $@
+	-cp $CLASSPATH it.unipd.dei.clustering.$1 ${@:2}
 

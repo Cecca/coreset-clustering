@@ -72,7 +72,7 @@ object Outliers {
 
     var sol: IndexedSeq[ProxyPoint[T]] = Vector.empty[ProxyPoint[T]]
     var outliers: IndexedSeq[ProxyPoint[T]] = points
-    
+
     // Do a binary search to find the right value
     var upper = candidates.length - 1
     var lower = 0
