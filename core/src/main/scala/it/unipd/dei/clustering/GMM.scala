@@ -76,6 +76,54 @@ object GMM {
     }
   }
 
+  def runWithAssignement[T: ClassTag](points: IndexedSeq[T],
+                                      k: Int,
+                                      distance: (T, T) => Double): (Array[Int], Array[Double]) =
+    runWithAssignement(points, k, Random.nextInt(points.length), distance)
+
+  def runWithAssignement[T: ClassTag](points: IndexedSeq[T],
+                                      k: Int,
+                                      startIdx: Int,
+                                      distance: (T, T) => Double): (Array[Int], Array[Double]) = {
+    if (points.length <= k) {
+      (points.indices.toArray, Array.ofDim[Double](points.size))
+    } else {
+      DEBUG(s"Clustering ${points.size} points with $k centers (with assignement)")
+      val minDist = Array.fill(points.size)(Double.PositiveInfinity)
+      val assignement = Array.fill(points.size)(0)
+
+      var currentCenterIdx = startIdx
+
+      // We start from 0 here because assignement is done within the loop
+      var i = 0
+      while (i < k) {
+        val currentCenter = points(currentCenterIdx)
+        var farthestIdx = 0
+        var maxDist = 0.0
+
+        var h = 0
+        while (h < points.length) {
+          // Look for the farthest node
+          val lastDist = distance(points(h), currentCenter)
+          if (lastDist < minDist(h)) {
+            minDist(h) = lastDist
+            assignement(h) = currentCenterIdx
+          }
+          if (minDist(h) > maxDist) {
+            maxDist = minDist(h)
+            farthestIdx = h
+          }
+          h += 1
+        }
+        currentCenterIdx = farthestIdx
+        i += 1
+      }
+
+      (assignement, minDist)
+    }
+  }
+
+
   def withRadius[T: ClassTag](points: IndexedSeq[T],
                               radius: Double,
                               distance: (T, T) => Double): IndexedSeq[T] =

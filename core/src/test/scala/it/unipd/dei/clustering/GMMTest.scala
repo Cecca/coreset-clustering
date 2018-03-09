@@ -47,4 +47,26 @@ object GMMTest extends Properties("FarthestPointHeuristic") {
       }
     }
 
+  property("assignement algorithm") =
+    forAll(Gen.listOf[Double](Gen.choose[Double](0.0, 1.0)), Gen.choose[Int](2, 100))
+    { (pts: List[Double], k: Int) =>
+      (pts.size >= 2 && k < pts.size) ==> {
+        println("=======================")
+        val points = pts.map(p => Point(p)).toArray
+        val centers = GMM.run(points, k, 0, distance).toSet
+        val (assignement, distances) = GMM.runWithAssignement(points, k, 0, distance)
+        val actualCenters = assignement.zipWithIndex
+          .filter({case (a, i) => a == i})
+          .map { case (a, i) =>
+            points(i)
+          }.toSet
+
+        val radius = Utils.maxMinDistance(points.toVector, centers.toVector, distance)
+        val actualRadius = distances.max
+
+        ((actualCenters == centers) :| s"Actual centers: $actualCenters\nExpected $centers") &&
+          ((radius == actualRadius) :| s"Actual radius: $actualRadius\nExpected $radius")
+      }
+    }
+
 }
