@@ -22,4 +22,11 @@ object ExperimentUtils {
     (tuple._1.toString, second)
   }
 
+  def timed[T](fn: => T): (T, Long) = {
+    val start = System.currentTimeMillis()
+    val res = fn
+    val end = System.currentTimeMillis()
+    (res, end - start)
+  }
+
 }

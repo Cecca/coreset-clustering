@@ -4,7 +4,7 @@ import it.unipd.dei.experiment.Experiment
 import org.apache.spark.ml.linalg.{Vector, Vectors}
 import org.apache.spark.{SparkConf, SparkContext}
 import org.rogach.scallop.ScallopConf
-import it.unipd.dei.clustering.ExperimentUtils.jMap
+import it.unipd.dei.clustering.ExperimentUtils.{jMap, timed}
 
 object Main {
 
@@ -44,21 +44,23 @@ object Main {
 
     val dist: (Vector, Vector) => Double = {case (a, b) => math.sqrt(Vectors.sqdist(a, b))}
 
-    val coreset = arguments.coreset() match {
-      case "mapreduce" =>
-        Algorithm.mapReduce(vecs, arguments.tau() + arguments.z.getOrElse(0), dist)
-      case "streaming" =>
-        Algorithm.streaming(vecs.toLocalIterator, arguments.tau() + arguments.z.getOrElse(0), dist)
-      case "random" =>
-        Algorithm.randomCoreset(vecs, arguments.tau() + arguments.z.getOrElse(0), dist)
-      case "none" =>
-        new Coreset[Vector] {
-          override def points: scala.Vector[ProxyPoint[Vector]] =
-            vecs.map(ProxyPoint.fromPoint).toLocalIterator.toVector
-        }
+    val (coreset, coresetTime) = timed {
+      arguments.coreset() match {
+        case "mapreduce" =>
+          Algorithm.mapReduce(vecs, arguments.tau() + arguments.z.getOrElse(0), dist)
+        case "streaming" =>
+          Algorithm.streaming(vecs.toLocalIterator, arguments.tau() + arguments.z.getOrElse(0), dist)
+        case "random" =>
+          Algorithm.randomCoreset(vecs, arguments.tau() + arguments.z.getOrElse(0), dist)
+        case "none" =>
+          new Coreset[Vector] {
+            override def points: scala.Vector[ProxyPoint[Vector]] =
+              vecs.map(ProxyPoint.fromPoint).toLocalIterator.toVector
+          }
+      }
     }
 
-    val centers: IndexedSeq[ProxyPoint[Vector]] =
+    val (centers, centersTime) = timed {
       (arguments.z.toOption, arguments.forceGmm()) match {
         case (Some(z), false) =>
           Outliers.run(coreset.points, arguments.k(), z, dist)._1
@@ -66,12 +68,17 @@ object Main {
           val centers = GMM.run(coreset.points.map(_.point), arguments.k(), dist)
           centers.map(ProxyPoint.fromPoint)
       }
+    }
 
     val radius = Algorithm.radius(vecs, centers, arguments.z.getOrElse(0), dist)
 
-    println(s"The radius is $radius")
+    println(s"The radius is $radius (coreset time $coresetTime, centers time $centersTime)")
     experiment.append("radius", jMap(
       "radius" -> radius))
+    experiment.append("time", jMap(
+      "coreset" -> coresetTime,
+      "centers" -> centersTime
+    ))
 
     experiment.saveAsJsonFile()
   }
