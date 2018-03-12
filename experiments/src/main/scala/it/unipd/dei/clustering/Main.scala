@@ -13,7 +13,7 @@ object Main {
     val k = opt[Int](required = true)
     val z = opt[Int](required = false)
     val tau = opt[Int](required = false, default = k.toOption)
-    val algorithm = opt[String](required = false, default = Some("mapreduce"))
+    val coreset = opt[String](required = false, default = Some("mapreduce"))
     val forceGmm = toggle(default = Some(false))
     verify()
 
@@ -23,7 +23,7 @@ object Main {
         .tag("k", k())
         .tag("z", z.getOrElse(-1))
         .tag("tau", tau())
-        .tag("algorithm", algorithm())
+        .tag("coreset", coreset())
         .tag("force-gmm", forceGmm())
     }
   }
@@ -44,13 +44,18 @@ object Main {
 
     val dist: (Vector, Vector) => Double = {case (a, b) => math.sqrt(Vectors.sqdist(a, b))}
 
-    val coreset = arguments.algorithm() match {
+    val coreset = arguments.coreset() match {
       case "mapreduce" =>
         Algorithm.mapReduce(vecs, arguments.tau() + arguments.z.getOrElse(0), dist)
       case "streaming" =>
         Algorithm.streaming(vecs.toLocalIterator, arguments.tau() + arguments.z.getOrElse(0), dist)
       case "random" =>
         Algorithm.randomCoreset(vecs, arguments.tau() + arguments.z.getOrElse(0), dist)
+      case "none" =>
+        new Coreset[Vector] {
+          override def points: scala.Vector[ProxyPoint[Vector]] =
+            vecs.map(ProxyPoint.fromPoint).toLocalIterator.toVector
+        }
     }
 
     val centers: IndexedSeq[ProxyPoint[Vector]] =
