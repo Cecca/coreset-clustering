@@ -1,8 +1,10 @@
 package it.unipd.dei.clustering
 
-import org.apache.spark.ml.linalg.{Vectors, Vector}
+import it.unipd.dei.experiment.Experiment
+import org.apache.spark.ml.linalg.{Vector, Vectors}
 import org.apache.spark.{SparkConf, SparkContext}
 import org.rogach.scallop.ScallopConf
+import it.unipd.dei.clustering.ExperimentUtils.jMap
 
 object Main {
 
@@ -14,17 +16,30 @@ object Main {
     val algorithm = opt[String](required = false, default = Some("mapreduce"))
     val forceGmm = toggle(default = Some(false))
     verify()
-  }
 
+    def getExperiment(): Experiment = {
+      new Experiment()
+        .tag("input", input())
+        .tag("k", k())
+        .tag("z", z.getOrElse(-1))
+        .tag("tau", tau())
+        .tag("algorithm", algorithm())
+        .tag("force-gmm", forceGmm())
+    }
+  }
 
   def main(args: Array[String]): Unit = {
 
     val arguments = new Args(args)
 
+    val experiment = arguments.getExperiment()
+
     val sparkConf = new SparkConf(loadDefaults = true).setAppName("Clustering")
     val sc = new SparkContext(sparkConf)
 
-    val vecs = VectorIO.readKryo(sc, arguments.input()).repartition(8).cache()
+    experiment.tag("parallelism", sc.defaultParallelism)
+
+    val vecs = VectorIO.readKryo(sc, arguments.input()).repartition(sc.defaultParallelism).cache()
     println(s"Loaded ${vecs.count()} vectors")
 
     val dist: (Vector, Vector) => Double = {case (a, b) => math.sqrt(Vectors.sqdist(a, b))}
@@ -50,6 +65,10 @@ object Main {
     val radius = Algorithm.radius(vecs, centers, arguments.z.getOrElse(0), dist)
 
     println(s"The radius is $radius")
+    experiment.append("radius", jMap(
+      "radius" -> radius))
+
+    experiment.saveAsJsonFile()
   }
 
 }
