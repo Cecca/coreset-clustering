@@ -50,15 +50,22 @@ object Algorithm {
       }
       val sampleIndices = sampleSet.toArray
       println("Took sample of indices")
-      val pairs = points.map { p =>
-        sampleIndices.iterator.map { idx =>
-          val c = points(idx)
-          (idx, distance(c, p))
-        }.minBy(_._2)
+      val assignment = Array.ofDim[Int](points.length)
+      val distances = Array.ofDim[Double](points.length)
+      for (i <- points.indices) {
+        var minIdx = 0
+        var minDist = Double.PositiveInfinity
+        for (idx <- sampleIndices) {
+          val d = distance(points(idx), points(i))
+          if (d < minDist) {
+            minDist = d
+            minIdx = idx
+          }
+        }
+        assignment(i) = minIdx
+        distances(i) = minDist
       }
-      println("Built pairs")
-      val assignment = pairs.map(_._1)
-      val distances = pairs.map(_._2)
+      println("Built assignment")
       MapReduceCoreset.fromAssignment[T](points, assignment, distances)
     }.reduce({case (a, b) => MapReduceCoreset.compose[T](a, b)})
   }
