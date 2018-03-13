@@ -148,6 +148,7 @@ object Outliers {
   def run[T](points: IndexedSeq[ProxyPoint[T]], k: Int, z: Int, distance: (T, T) => Double, osc: Option[SparkContext])
   : (IndexedSeq[ProxyPoint[T]], IndexedSeq[ProxyPoint[T]]) = {
     val n = points.size
+    println(s"Clustering $n points with $k centers and $z outliers")
 
     val proxyRadius = points.iterator.map(_.radius).max
     DEBUG(s"The proxies radius is $proxyRadius")
@@ -327,10 +328,12 @@ object LocalSortedDistanceVector {
     var out_idx = 1
     var last = dists(0)
     while(in_idx < dists.length) {
-      if (dists(in_idx) != last) {
+      if (dists(in_idx) > last) {
         last = dists(in_idx)
         dists(out_idx) = last
         out_idx += 1
+      } else if (dists(in_idx) < last) {
+        throw new IllegalArgumentException("The array should be sorted!")
       }
       in_idx += 1
     }
