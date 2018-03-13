@@ -4,10 +4,8 @@ import it.unipd.dei.clustering.Debug.DEBUG
 import org.apache.spark.SparkContext
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
-import org.bouncycastle.crypto.prng.drbg.DualECPoints
 
 import scala.collection.mutable
-import scala.collection.mutable.ArrayBuffer
 
 object Outliers {
 
@@ -101,20 +99,28 @@ object Outliers {
         distances(j)(i) = d
       }
     }
-    val candidates = distances.par.flatMap(_.iterator).toSet.toArray
+//    val candidates = distances.par.flatMap(_.iterator).toSet.toArray
+    val candidatesArr = Array.ofDim[Double](n*n)
+    var i = 0
+    for (row <- distances; d <- row) {
+      candidatesArr(i) = d
+      i += 1
+    }
+    val candidates = LocalSortedDistanceVector(candidatesArr)
+
 
     var sol: IndexedSeq[ProxyPoint[T]] = Vector.empty[ProxyPoint[T]]
     var outliers: IndexedSeq[ProxyPoint[T]] = points
 
     // Do a binary search to find the right value
-    var upper = candidates.length - 1
-    var lower = 0
+    var upper = candidates.size - 1
+    var lower = 0L
 
     DEBUG("============================================")
     DEBUG(s"Lower ${candidates(lower)} upper ${candidates(upper)} ($upper candidates)")
 
     while (lower < upper-1) {
-      val mid: Int = (lower + upper) / 2
+      val mid: Long = (lower + upper) / 2
       DEBUG(s"Testing ${candidates(mid)} (lower $lower current $mid upper $upper)")
       val (tmpSol, tmpOutliers) = run(points, k, candidates(mid), proxyRadius, distances)
       sol = tmpSol
@@ -209,9 +215,9 @@ class DistanceMatrix(data: RDD[Array[Double]]) {
 
   def row(i: Int): Array[Double] = data.zipWithIndex().filter(_._2 == i).collect()(0)._1
 
-  def allDistances(): SortedDistanceVector = {
+  def allDistances(): DistributedSortedDistanceVector = {
     val dists = data.flatMap(_.iterator)
-    SortedDistanceVector(dists)
+    DistributedSortedDistanceVector(dists)
   }
 
 }
@@ -230,17 +236,45 @@ object DistanceMatrix {
 
 }
 
-class SortedDistanceVector(val data: RDD[(Double, Long)], val size: Long) {
+class DistributedSortedDistanceVector(val data: RDD[(Double, Long)], val size: Long) {
 
   def apply(i: Long): Double = data.filter(_._2 == i).collect()(0)._1
 
 }
 
-object SortedDistanceVector {
+object DistributedSortedDistanceVector {
 
-  def apply(dists: RDD[Double]): SortedDistanceVector = {
+  def apply(dists: RDD[Double]): DistributedSortedDistanceVector = {
     val sorted = dists.sortBy(identity).zipWithIndex().cache()
-    new SortedDistanceVector(sorted, sorted.count())
+    new DistributedSortedDistanceVector(sorted, sorted.count())
+  }
+
+}
+
+class LocalSortedDistanceVector(val data: Array[Double], val size: Long) {
+
+  def apply(i: Long): Double = data(i.toInt)
+
+}
+
+object LocalSortedDistanceVector {
+
+  def apply(dists: Array[Double]): LocalSortedDistanceVector = {
+    java.util.Arrays.sort(dists)
+    // Remove possible duplicates
+    var in_idx = 1
+    var out_idx = 1
+    var last = dists(0)
+    while(in_idx < dists.length) {
+      if (dists(in_idx) != last) {
+        last = dists(in_idx)
+        dists(out_idx) = last
+        out_idx += 1
+      }
+      in_idx += 1
+    }
+
+    new LocalSortedDistanceVector(dists, out_idx)
   }
 
 }

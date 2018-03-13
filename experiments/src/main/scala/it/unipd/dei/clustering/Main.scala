@@ -64,11 +64,12 @@ object Main {
     val (centers, centersTime) = timed {
       (arguments.z.toOption, arguments.forceGmm()) match {
         case (Some(z), false) =>
-          if (matrixBytes(coreset.points.size) < freeBytes()) {
-            println(s"Needed ${formatBytes(matrixBytes(coreset.points.size))} with ${formatBytes(freeBytes())} free, using local implementation")
+          val neededBytes = 2*matrixBytes(coreset.points.size)
+          if (neededBytes < freeBytes()) {
+            println(s"Needed ${formatBytes(neededBytes)} with ${formatBytes(freeBytes())} free, using local implementation")
             Outliers.run(coreset.points, arguments.k(), z, dist)._1
           } else {
-            println(s"Matrix would require ${formatBytes(matrixBytes(coreset.points.size))}, using distributed implementation")
+            println(s"Matrix would require ${formatBytes(neededBytes)}, using distributed implementation")
             Outliers.run(sc, coreset.points, arguments.k(), z, dist)._1
           }
         case (_, true) | (None, _) =>
