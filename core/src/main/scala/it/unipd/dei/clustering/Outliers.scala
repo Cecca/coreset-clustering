@@ -1,8 +1,6 @@
 package it.unipd.dei.clustering
 
 import it.unipd.dei.clustering.Debug.DEBUG
-import org.apache.spark.SparkContext
-import org.apache.spark.rdd.RDD
 
 import scala.collection.mutable
 
@@ -59,18 +57,15 @@ object Outliers {
     val proxyRadius = points.iterator.map(_.radius).max
     DEBUG(s"The proxies radius is $proxyRadius")
 
-    val candidatesSet = mutable.SortedSet[Double]()
-
     val distances = Array.ofDim[Double](n, n)
-    for (i <- 0 until n) {
+    (0 until n).par.foreach { i =>
       for (j <- (i+1) until n) {
         val d = distance(points(i).point, points(j).point)
-        candidatesSet += d
         distances(i)(j) = d
         distances(j)(i) = d
       }
     }
-    val candidates = candidatesSet.toArray
+    val candidates = distances.par.flatMap(_.iterator).toSet.toArray
 
     var sol: IndexedSeq[ProxyPoint[T]] = Vector.empty[ProxyPoint[T]]
     var outliers: IndexedSeq[ProxyPoint[T]] = points
