@@ -10,6 +10,7 @@ import scala.collection.mutable
 object Outliers {
 
   // Takes as a parameter proxyRadius in order not to recompute it every time.
+  @deprecated
   def run[T](points: IndexedSeq[ProxyPoint[T]], k: Int, r: Double, proxyRadius: Double, distances: Array[Array[Double]])
   : (IndexedSeq[ProxyPoint[T]], IndexedSeq[ProxyPoint[T]]) = {
     val n = points.size
@@ -83,7 +84,7 @@ object Outliers {
     (centers.toVector, outliers)
   }
 
-
+  @deprecated
   def run[T](points: IndexedSeq[ProxyPoint[T]], k: Int, z: Int, distance: (T, T) => Double)
   : (IndexedSeq[ProxyPoint[T]], IndexedSeq[ProxyPoint[T]]) = {
     val n = points.size
@@ -249,7 +250,7 @@ object DistributedDistanceMatrix {
     DEBUG("Building distance matrix")
     val bWeights = sc.broadcast(points.map(_.weight).toArray)
     val bPoints = sc.broadcast(points.map(_.point))
-    val data = sc.parallelize(points.indices).map { i =>
+    val data = sc.parallelize(points.indices, sc.defaultParallelism*4).map { i =>
       val p = bPoints.value(i)
       bPoints.value.map(x => distance(x, p)).toArray
     }.cache()
