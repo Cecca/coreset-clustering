@@ -63,7 +63,7 @@ object Main {
     val (centers, centersTime) = timed {
       (arguments.z.toOption, arguments.forceGmm()) match {
         case (Some(z), false) =>
-          Outliers.run(coreset.points, arguments.k(), z, dist)._1
+          Outliers.run(sc, coreset.points, arguments.k(), z, dist)._1
         case (_, true) | (None, _) =>
           val centers = GMM.run(coreset.points.map(_.point), arguments.k(), dist)
           centers.map(ProxyPoint.fromPoint)
