@@ -5,6 +5,7 @@ import org.apache.spark.ml.linalg.{Vector, Vectors}
 import org.apache.spark.{SparkConf, SparkContext}
 import org.rogach.scallop.ScallopConf
 import it.unipd.dei.clustering.ExperimentUtils.{jMap, timed}
+import MemoryUtils._
 
 object Main {
 
@@ -63,7 +64,13 @@ object Main {
     val (centers, centersTime) = timed {
       (arguments.z.toOption, arguments.forceGmm()) match {
         case (Some(z), false) =>
-          Outliers.run(sc, coreset.points, arguments.k(), z, dist)._1
+          if (matrixBytes(coreset.points.size) < freeBytes()) {
+            println(s"Needed ${formatBytes(matrixBytes(coreset.points.size))} with ${formatBytes(freeBytes())} free, using local implementation")
+            Outliers.run(coreset.points, arguments.k(), z, dist)._1
+          } else {
+            println(s"Matrix would require ${formatBytes(matrixBytes(coreset.points.size))}, using distributed implementation")
+            Outliers.run(sc, coreset.points, arguments.k(), z, dist)._1
+          }
         case (_, true) | (None, _) =>
           val centers = GMM.run(coreset.points.map(_.point), arguments.k(), dist)
           centers.map(ProxyPoint.fromPoint)
