@@ -85,8 +85,12 @@ object Main {
     experiment.append("radius", jMap(
       "radius" -> radius))
     experiment.append("time", jMap(
-      "coreset" -> coresetTime,
-      "centers" -> centersTime
+      "component" -> "coreset",
+      "time" -> coresetTime
+    ))
+    experiment.append("time", jMap(
+      "component" -> "centers",
+      "time" -> centersTime
     ))
 
     experiment.saveAsJsonFile()
