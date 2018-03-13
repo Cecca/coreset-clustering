@@ -53,12 +53,12 @@ object Outliers {
     (centers.toVector, outliers)
   }
 
-  def runMat[T](points: IndexedSeq[ProxyPoint[T]], k: Int, r: Double, proxyRadius: Double, distances: DistanceMatrix, bWeights: Broadcast[Array[Long]])
+  def runMat[T](points: IndexedSeq[ProxyPoint[T]], k: Int, r: Double, proxyRadius: Double, distances: DistributedDistanceMatrix)
   : (IndexedSeq[ProxyPoint[T]], IndexedSeq[ProxyPoint[T]]) = {
     val n = points.size
     val centers = new mutable.ArrayBuffer[ProxyPoint[T]]()
 
-    val weights: Array[Long] = distances.ballWeight(bWeights, r + 2*proxyRadius)
+    val weights: Array[Long] = distances.ballWeight(r + 2*proxyRadius)
 
     var iteration = 0
     while (iteration < k && weights.sum > 0) {
@@ -149,12 +149,10 @@ object Outliers {
   : (IndexedSeq[ProxyPoint[T]], IndexedSeq[ProxyPoint[T]]) = {
     val n = points.size
 
-    val bWeights = sc.broadcast(points.map(_.weight).toArray)
-
     val proxyRadius = points.iterator.map(_.radius).max
     DEBUG(s"The proxies radius is $proxyRadius")
 
-    val distances = DistanceMatrix(sc, points, distance)
+    val distances = DistributedDistanceMatrix(sc, points, distance)
     val candidates = distances.allDistances()
     DEBUG("Built candidates array")
 
@@ -171,7 +169,7 @@ object Outliers {
     while (lower < upper-1) {
       val mid: Long = (lower + upper) / 2
       DEBUG(s"Testing ${candidates(mid)} (lower $lower current $mid upper $upper)")
-      val (tmpSol, tmpOutliers) = runMat(points, k, candidates(mid), proxyRadius, distances, bWeights)
+      val (tmpSol, tmpOutliers) = runMat(points, k, candidates(mid), proxyRadius, distances)
       sol = tmpSol
       outliers = tmpOutliers
       DEBUG(s"Outliers ${outliers.size} (max $z)")
@@ -197,9 +195,20 @@ object Outliers {
 
 }
 
-class DistanceMatrix(data: RDD[Array[Double]]) {
+trait DistanceMatrix {
+  def ballWeight[T](radius: Double): Array[Long]
+  def row(i: Int): Array[Double]
+  def allDistances(): SortedDistanceVector
+}
 
-  def ballWeight[T](bWeights: Broadcast[Array[Long]], radius: Double): Array[Long] = {
+trait SortedDistanceVector {
+  def apply(i: Long): Double
+  def size: Long
+}
+
+class DistributedDistanceMatrix(val data: RDD[Array[Double]], val bWeights: Broadcast[Array[Long]]) extends DistanceMatrix {
+
+  def ballWeight[T](radius: Double): Array[Long] = {
     data.map { row =>
       var sum = 0L
       var i = 0
@@ -215,28 +224,74 @@ class DistanceMatrix(data: RDD[Array[Double]]) {
 
   def row(i: Int): Array[Double] = data.zipWithIndex().filter(_._2 == i).collect()(0)._1
 
-  def allDistances(): DistributedSortedDistanceVector = {
+  def allDistances(): SortedDistanceVector = {
     val dists = data.flatMap(_.iterator)
     DistributedSortedDistanceVector(dists)
   }
 
 }
 
-object DistanceMatrix {
+object DistributedDistanceMatrix {
 
-  def apply[T](sc: SparkContext, points: IndexedSeq[ProxyPoint[T]], distance: (T, T) => Double): DistanceMatrix = {
+  def apply[T](sc: SparkContext, points: IndexedSeq[ProxyPoint[T]], distance: (T, T) => Double): DistributedDistanceMatrix = {
     DEBUG("Building distance matrix")
+    val bWeights = sc.broadcast(points.map(_.weight).toArray)
     val bPoints = sc.broadcast(points.map(_.point))
     val data = sc.parallelize(points.indices).map { i =>
       val p = bPoints.value(i)
       bPoints.value.map(x => distance(x, p)).toArray
     }.cache()
-    new DistanceMatrix(data)
+    new DistributedDistanceMatrix(data, bWeights)
   }
 
 }
 
-class DistributedSortedDistanceVector(val data: RDD[(Double, Long)], val size: Long) {
+class LocalDistanceMatrix(val data: Array[Array[Double]], val weights: Array[Long]) extends DistanceMatrix {
+
+  def ballWeight[T](radius: Double): Array[Long] = {
+    data.map { row =>
+      var sum = 0L
+      var i = 0
+      while (i < row.length){
+        if (row(i) <= radius) {
+          sum += weights(i)
+        }
+        i += 1
+      }
+      sum
+    }
+  }
+
+  def row(i: Int): Array[Double] = data(i.toInt)
+
+  def allDistances(): SortedDistanceVector = {
+    val candidatesArr = Array.ofDim[Double](data.length*data.length)
+    var i = 0
+    for (row <- data; d <- row) {
+      candidatesArr(i) = d
+      i += 1
+    }
+    LocalSortedDistanceVector(candidatesArr)
+  }
+}
+
+object LocalDistanceMatrix {
+  def apply[T](points: IndexedSeq[ProxyPoint[T]], distance: (T, T) => Double): LocalDistanceMatrix = {
+    val n = points.length
+    val distances = Array.ofDim[Double](n, n)
+    (0 until n).par.foreach { i =>
+      for (j <- (i+1) until n) {
+        val d = distance(points(i).point, points(j).point)
+        distances(i)(j) = d
+        distances(j)(i) = d
+      }
+    }
+    val weights = points.map(_.weight).toArray
+    new LocalDistanceMatrix(distances, weights)
+  }
+}
+
+class DistributedSortedDistanceVector(val data: RDD[(Double, Long)], val size: Long) extends SortedDistanceVector {
 
   def apply(i: Long): Double = data.filter(_._2 == i).collect()(0)._1
 
@@ -251,7 +306,7 @@ object DistributedSortedDistanceVector {
 
 }
 
-class LocalSortedDistanceVector(val data: Array[Double], val size: Long) {
+class LocalSortedDistanceVector(val data: Array[Double], val size: Long) extends SortedDistanceVector {
 
   def apply(i: Long): Double = data(i.toInt)
 
