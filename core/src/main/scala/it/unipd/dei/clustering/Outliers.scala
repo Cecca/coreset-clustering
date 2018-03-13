@@ -195,6 +195,10 @@ object Outliers {
       sol.iterator.map({c => distance(c.point, p.point)}).min
     }}).max
 
+    if (outliers.map(_.weight).sum > z) {
+      throw new IllegalStateException(s"The outliers proxy cannot weight more than z=$z! (current weight is ${outliers.map(_.weight).sum})")
+    }
+
     DEBUG(s"Radius of clustering on proxy set (excluding outliers): $actualRadius")
 
     (sol, outliers)
