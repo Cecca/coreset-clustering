@@ -21,7 +21,7 @@ object Outliers {
 
       // TODO: Use par
       // Find the disk covering the most weight
-      val center = (0 until n).map({ idx =>
+      val center = (0 until n).par.map({ idx =>
         var nCov = 0L
         var j = 0
         while (j < n) {
@@ -51,52 +51,6 @@ object Outliers {
 
     (centers.toVector, outliers)
   }
-
-  // Takes as a parameter proxyRadius in order not to recompute it every time.
-  def runMapReduce[T](points: IndexedSeq[ProxyPoint[T]], k: Int, r: Double, proxyRadius: Double, distances: RDD[((Int, Int), Double)])
-  : (IndexedSeq[ProxyPoint[T]], IndexedSeq[ProxyPoint[T]]) = {
-    val n = points.size
-    val centers = new mutable.ArrayBuffer[ProxyPoint[T]]()
-
-    val bWeights = distances.context.broadcast(points.map(_.weight))
-
-    val covered = Array.fill[Boolean](n)(false)
-
-    var iteration = 0
-    while (iteration < k && covered.count(!_) > 0) {
-
-      val bCovered = distances.context.broadcast(covered)
-      val center = distances.flatMap({ case ((i, j), d) =>
-        if (!bCovered.value(j) && d <= r + 2*proxyRadius) {
-          Iterator.single((i, bWeights.value(j)))
-        } else {
-          Iterator.empty
-        }
-      }).reduceByKey(_ + _)
-        .max()(Ordering.by(_._2))._1
-
-      centers.append(points(center))
-
-      // Mark points in the large disk as covered
-      distances.flatMap({ case ((i, j), d) =>
-        if ((i == center) && d <= 3*r + 4*proxyRadius) {
-          Iterator.single(j)
-        } else {
-          Iterator.empty
-        }
-      }).toLocalIterator.foreach({ j =>
-        covered(j) = true
-      })
-
-      iteration += 1
-    }
-
-
-    val outliers = points.zip(covered).filter(!_._2).map(_._1)
-
-    (centers.toVector, outliers)
-  }
-
 
   def run[T](points: IndexedSeq[ProxyPoint[T]], k: Int, z: Int, distance: (T, T) => Double)
   : (IndexedSeq[ProxyPoint[T]], IndexedSeq[ProxyPoint[T]]) = {
@@ -153,65 +107,5 @@ object Outliers {
 
     (sol, outliers)
   }
-
-  def runMapReduce[T](sc: SparkContext, points: IndexedSeq[ProxyPoint[T]], k: Int, z: Int, distance: (T, T) => Double)
-  : (IndexedSeq[ProxyPoint[T]], IndexedSeq[ProxyPoint[T]]) = {
-    val n = points.size
-
-    val proxyRadius = points.iterator.map(_.radius).max
-    DEBUG(s"The proxies radius is $proxyRadius")
-
-    val candidatesSet = mutable.SortedSet[Double]()
-
-    val distances = Array.ofDim[Double](n, n)
-    for (i <- 0 until n) {
-      for (j <- (i+1) until n) {
-        val d = distance(points(i).point, points(j).point)
-        candidatesSet += d
-        distances(i)(j) = d
-        distances(j)(i) = d
-      }
-    }
-    val candidates = candidatesSet.toArray
-    val dDistances = sc.parallelize(distances.zipWithIndex.flatMap({ case (dists, i) =>
-      dists.zipWithIndex.map({case (d, j) => ((i, j), d)})
-    }))
-
-    var sol: IndexedSeq[ProxyPoint[T]] = Vector.empty[ProxyPoint[T]]
-    var outliers: IndexedSeq[ProxyPoint[T]] = points
-
-    // Do a binary search to find the right value
-    var upper = candidates.length - 1
-    var lower = 0
-
-    DEBUG("============================================")
-    DEBUG(s"Lower ${candidates(lower)} upper ${candidates(upper)} ($upper candidates)")
-
-    while (lower < upper-1) {
-      val mid: Int = (lower + upper) / 2
-      DEBUG(s"Testing ${candidates(mid)} (lower $lower current $mid upper $upper)")
-      val (tmpSol, tmpOutliers) = runMapReduce(points, k, candidates(mid), proxyRadius, dDistances)
-      sol = tmpSol
-      outliers = tmpOutliers
-      DEBUG(s"Outliers ${outliers.size} (max $z)")
-      if (outliers.size > z) {
-        DEBUG("Too many outliers, raising the lower bound")
-        lower = mid
-      } else {
-        DEBUG("Too few outliers, lowering upper bound")
-        upper = mid
-      }
-    }
-
-    val outliersSet = outliers.toSet
-    val actualRadius = points.iterator.filterNot(outliersSet.contains).map({ p => {
-      sol.iterator.map({c => distance(c.point, p.point)}).min
-    }}).max
-
-    DEBUG(s"Radius of clustering on proxy set (excluding outliers): $actualRadius")
-
-    (sol, outliers)
-  }
-
 
 }
