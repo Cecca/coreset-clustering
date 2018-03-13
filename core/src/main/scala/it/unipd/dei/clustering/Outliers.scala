@@ -179,8 +179,9 @@ object Outliers {
       val (tmpSol, tmpOutliers) = runMat(points, k, candidates(mid), proxyRadius, distances)
       sol = tmpSol
       outliers = tmpOutliers
-      DEBUG(s"Outliers ${outliers.size} (max $z)")
-      if (outliers.size > z) {
+      val outliersWeight = outliers.map(_.weight).sum
+      DEBUG(s"Outliers weight $outliersWeight (max $z)")
+      if (outliersWeight > z) {
         DEBUG("Too many outliers, raising the lower bound")
         lower = mid
       } else {
