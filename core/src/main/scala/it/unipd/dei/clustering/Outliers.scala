@@ -53,7 +53,7 @@ object Outliers {
     (centers.toVector, outliers)
   }
 
-  def runMat[T](points: IndexedSeq[ProxyPoint[T]], k: Int, r: Double, proxyRadius: Double, distances: DistributedDistanceMatrix)
+  def runMat[T](points: IndexedSeq[ProxyPoint[T]], k: Int, r: Double, proxyRadius: Double, distances: DistanceMatrix)
   : (IndexedSeq[ProxyPoint[T]], IndexedSeq[ProxyPoint[T]]) = {
     val n = points.size
     val centers = new mutable.ArrayBuffer[ProxyPoint[T]]()
@@ -145,16 +145,22 @@ object Outliers {
     (sol, outliers)
   }
 
-  def run[T](sc: SparkContext, points: IndexedSeq[ProxyPoint[T]], k: Int, z: Int, distance: (T, T) => Double)
+  def run[T](points: IndexedSeq[ProxyPoint[T]], k: Int, z: Int, distance: (T, T) => Double, osc: Option[SparkContext])
   : (IndexedSeq[ProxyPoint[T]], IndexedSeq[ProxyPoint[T]]) = {
     val n = points.size
 
     val proxyRadius = points.iterator.map(_.radius).max
     DEBUG(s"The proxies radius is $proxyRadius")
 
-    val distances = DistributedDistanceMatrix(sc, points, distance)
+    val distances = osc match {
+      case Some(sc) =>
+        DistributedDistanceMatrix(sc, points, distance)
+      case None =>
+        LocalDistanceMatrix(points, distance)
+    }
+    DEBUG("Computed distance matrix")
     val candidates = distances.allDistances()
-    DEBUG("Built candidates array")
+    DEBUG("Computed candidates distances")
 
     var sol: IndexedSeq[ProxyPoint[T]] = Vector.empty[ProxyPoint[T]]
     var outliers: IndexedSeq[ProxyPoint[T]] = points

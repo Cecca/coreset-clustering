@@ -65,13 +65,14 @@ object Main {
       (arguments.z.toOption, arguments.forceGmm()) match {
         case (Some(z), false) =>
           val neededBytes = 2*matrixBytes(coreset.points.size)
-          if (neededBytes < freeBytes()) {
+          val osc = if (neededBytes < freeBytes()) {
             println(s"Needed ${formatBytes(neededBytes)} with ${formatBytes(freeBytes())} free, using local implementation")
-            Outliers.run(coreset.points, arguments.k(), z, dist)._1
+            None
           } else {
             println(s"Matrix would require ${formatBytes(neededBytes)}, using distributed implementation")
-            Outliers.run(sc, coreset.points, arguments.k(), z, dist)._1
+            Some(sc)
           }
+          Outliers.run(coreset.points, arguments.k(), z, dist, osc)._1
         case (_, true) | (None, _) =>
           val centers = GMM.run(coreset.points.map(_.point), arguments.k(), dist)
           centers.map(ProxyPoint.fromPoint)
