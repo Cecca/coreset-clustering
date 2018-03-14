@@ -72,7 +72,7 @@ lazy val experiments = (project in file("experiments")).
     libraryDependencies ++=
       //filterDeps(
         Seq(
-          "it.unipd.dei" % "experiment-reporter" % "0.3.0",
+          "it.unipd.dei" % "experiment-reporter" % "0.4.0",
           "org.rogach" %% "scallop" % "3.1.1"
         ),
       //)
