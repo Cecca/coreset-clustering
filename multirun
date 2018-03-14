@@ -1,0 +1,96 @@
+#!/usr/bin/env python
+
+import sys
+import yaml
+import subprocess as sp
+from pprint import pprint
+from itertools import product
+
+
+def load_config(config_path):
+    with open(config_path, "r") as fp:
+        return yaml.load(fp.read())
+
+
+def get_param(key):
+    pname = key
+    pname = pname.replace("_", "-")
+    if len(pname) == 1:
+        pname = "-" + pname
+    else:
+        pname = "--" + pname
+    return pname
+
+
+class EvalEnviron(object):
+
+    def __init__(self, mapping):
+        self.mapping = mapping
+
+    def keys(self):
+        return self.mapping.keys()
+
+    def __getitem__(self, key):
+        v = self.mapping[key]
+        if isinstance(v, str):
+            open_idx = v.find("{{")
+            close_idx = v.find("}}")
+            if open_idx >= 0:
+                to_eval = v[open_idx+2:close_idx]
+                evaluated = eval(to_eval, {}, self)
+                return evaluated
+        return v
+
+
+def build_commands(global_config):
+    cmd = global_config["command"]
+
+    basic_command_line = [
+        cmd
+    ]
+    with open(global_config.get('classpath_file', '.classpath')) as fp:
+        classpath = fp.read().strip()
+    if cmd == 'java':
+        basic_command_line.extend([
+            '-cp', classpath,
+        ])
+        properties = global_config['properties']
+        for prop in properties:
+            basic_command_line.append(
+                "-D{}={}".format(
+                    prop, properties[prop]))
+        basic_command_line.append(global_config['class'])
+
+    commands = []
+    for config in global_config['configurations']:
+        values = []
+        for param_values in config.values():
+            if isinstance(param_values, list):
+                values.append(param_values)
+            else:
+                values.append([param_values])
+        for vals in product(*values):
+            environ = EvalEnviron(dict(zip(config.keys(), vals)))
+            command_line = basic_command_line.copy()
+            for k in environ.keys():
+                command_line.append(get_param(k))
+                v = environ[k]
+                if not isinstance(v, bool):
+                    command_line.append(v)
+            commands.append([str(t) for t in command_line])
+    return commands
+
+
+def run(commands):
+    for command in commands:
+        sp.run(command)
+
+
+def main():
+    config_path = sys.argv[1]
+    commands = build_commands(load_config(config_path))
+    run(commands)
+
+
+if __name__ == '__main__':
+    main()
