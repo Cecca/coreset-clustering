@@ -1,0 +1,9 @@
+#!/bin/bash
+
+# Small utility script to run the project using the compile-time classpath
+# without resorting to SBT every time.
+# This is useful because the fat-jar does not include Spark and Hadoop, since
+# those are provided dependencies
+
+CLASSPATH_FILE=.classpath
+sbt "export experiments/fullClasspath" | tail -n 1 > $CLASSPATH_FILE
