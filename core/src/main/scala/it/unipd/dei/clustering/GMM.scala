@@ -29,6 +29,11 @@ object GMM {
                        distance: (T, T) => Double): IndexedSeq[T] =
     run(points, k, Random.nextInt(points.length), distance)
 
+  def runParallel[T: ClassTag](points: IndexedSeq[T],
+                               k: Int,
+                               distance: (T, T) => Double): IndexedSeq[T] =
+    runParallel(points, k, Random.nextInt(points.length), distance)
+
 
   def run[T: ClassTag](points: IndexedSeq[T],
                        k: Int,
@@ -70,6 +75,35 @@ object GMM {
           h += 1
         }
         result(i) = farthest
+        i += 1
+      }
+      result
+    }
+  }
+
+  def runParallel[T: ClassTag](points: IndexedSeq[T],
+                               k: Int,
+                               startIdx: Int,
+                               distance: (T, T) => Double): IndexedSeq[T] = {
+    if (points.length <= k) {
+      points
+    } else {
+      val minDist = Array.fill(points.size)(Double.PositiveInfinity)
+      val result = Array.ofDim[T](k)
+      // Init the result with an arbitrary point
+      result(0) = points(startIdx)
+      var i = 1
+      while (i < k) {
+        // update distances in parallel, in place
+        points.indices.par.foreach { h =>
+          val lastDist = distance(points(h), result(i-1))
+          if (lastDist < minDist(h)) {
+            minDist(h) = lastDist
+          }
+        }
+        // Find the farthest node, again in parallel
+        val farthestIdx = minDist.par.zipWithIndex.maxBy(_._1)._2
+        result(i) = points(farthestIdx)
         i += 1
       }
       result

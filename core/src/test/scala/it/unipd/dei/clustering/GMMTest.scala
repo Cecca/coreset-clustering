@@ -47,6 +47,17 @@ object GMMTest extends Properties("FarthestPointHeuristic") {
       }
     }
 
+  property("parallel implementation") =
+    forAll(Gen.listOf[Double](Gen.choose[Double](0.0, 1.0)), Gen.choose[Int](2, 100))
+    { (pts: List[Double], k: Int) =>
+      (pts.size >= 2 && k < pts.size) ==> {
+        val points = pts.map(p => Point(p)).toArray
+        val actual = GMM.runParallel(points, k, 0, distance).toSet
+        val expected = GMM.runIdiomatic(points, k, distance).toSet
+        s"$actual != $expected" |:(actual == expected)
+      }
+    }
+
   property("assignement algorithm") =
     forAll(Gen.listOf[Double](Gen.choose[Double](0.0, 1.0)), Gen.choose[Int](2, 100))
     { (pts: List[Double], k: Int) =>
