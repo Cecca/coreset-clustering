@@ -61,7 +61,7 @@ object StreamingCoresetBench extends Bench.OfflineReport {
 
     measure method "coreset" in {
       using(params) in { case (points, size, k) =>
-        val coreset = new StreamingCoreset[Point](size, k, distance)
+        val coreset = new StreamingCoreset[Point](size, distance)
         var i = 0
         while (i < points.length) {
           coreset.update(points(i))

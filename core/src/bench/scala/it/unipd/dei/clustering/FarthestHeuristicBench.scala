@@ -57,6 +57,13 @@ object FarthestHeuristicBench extends Bench.OfflineReport {
       }
     }
 
+    measure method "runParallel" in {
+      using(params) in { case (points, k) =>
+        GMM.runParallel(points, k, 0, distance)
+      }
+    }
+
+
   }
 
 }

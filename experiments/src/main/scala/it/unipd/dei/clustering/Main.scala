@@ -74,7 +74,7 @@ object Main {
           }
           Outliers.run(coreset.points, arguments.k(), z, dist, osc)._1
         case (_, true) | (None, _) =>
-          val centers = GMM.run(coreset.points.map(_.point), arguments.k(), dist)
+          val centers = GMM.runParallel(coreset.points.map(_.point), arguments.k(), dist)
           centers.map(ProxyPoint.fromPoint)
       }
     }

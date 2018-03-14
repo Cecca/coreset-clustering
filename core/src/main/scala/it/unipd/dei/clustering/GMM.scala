@@ -102,7 +102,17 @@ object GMM {
           }
         }
         // Find the farthest node, again in parallel
-        val farthestIdx = minDist.par.zipWithIndex.maxBy(_._1)._2
+//        val farthestIdx = minDist.view.par.zipWithIndex.maxBy(_._1)._2
+        var farthestIdx = 0
+        var maxDist = 0.0
+        var h = 0
+        while (h < points.length) {
+          if (minDist(h) > maxDist) {
+            maxDist = minDist(h)
+            farthestIdx = h
+          }
+          h += 1
+        }
         result(i) = points(farthestIdx)
         i += 1
       }
