@@ -5,6 +5,13 @@ import yaml
 import subprocess as sp
 from pprint import pprint
 from itertools import product
+import logging
+import signal
+
+
+FORMAT = '%(asctime)-15s %(message)s'
+logging.basicConfig(
+    format=FORMAT, level=logging.INFO, filename="multirun.log")
 
 
 def load_config(config_path):
@@ -42,54 +49,72 @@ class EvalEnviron(object):
         return v
 
 
-def build_commands(global_config):
-    cmd = global_config["command"]
+def build_args(global_config):
+        arguments = []
+        for config in global_config['configurations']:
+            values = []
+            for param_values in config.values():
+                if isinstance(param_values, list):
+                    values.append(param_values)
+                else:
+                    values.append([param_values])
+            for vals in product(*values):
+                environ = EvalEnviron(dict(zip(config.keys(), vals)))
+                argument_combination = []
+                for k in environ.keys():
+                    argument_combination.append(get_param(k))
+                    v = environ[k]
+                    if not isinstance(v, bool):
+                        argument_combination.append(v)
+                arguments.append([str(t) for t in argument_combination])
+        return arguments
 
-    basic_command_line = [
-        cmd
-    ]
-    with open(global_config.get('classpath_file', '.classpath')) as fp:
-        classpath = fp.read().strip()
-    if cmd == 'java':
-        basic_command_line.extend([
+
+class JavaCommands(object):
+
+    logger = logging.getLogger("JavaCommands")
+    
+    def __init__(self, config):
+        assert config['command'] == 'java'
+        self.basic_command_line = ['java']
+        with open(config.get('classpath_file', '.classpath')) as fp:
+            classpath = fp.read().strip()
+        self.basic_command_line.extend([
             '-cp', classpath,
         ])
-        properties = global_config['properties']
+        properties = config['properties']
         for prop in properties:
-            basic_command_line.append(
+            self.basic_command_line.append(
                 "-D{}={}".format(
                     prop, properties[prop]))
-        basic_command_line.append(global_config['class'])
-
-    commands = []
-    for config in global_config['configurations']:
-        values = []
-        for param_values in config.values():
-            if isinstance(param_values, list):
-                values.append(param_values)
+        self.basic_command_line.append(config['class'])
+        self.args = build_args(config)
+        
+    def run(self):
+        for arguments in self.args:
+            cmdline = self.basic_command_line + arguments
+            JavaCommands.logger.info("Running %s", arguments)
+            process_result = sp.run(cmdline)
+            if process_result.returncode != 0:
+                JavaCommands.logger.error(
+                    "Command failed with %d error", process_result.returncode)
             else:
-                values.append([param_values])
-        for vals in product(*values):
-            environ = EvalEnviron(dict(zip(config.keys(), vals)))
-            command_line = basic_command_line.copy()
-            for k in environ.keys():
-                command_line.append(get_param(k))
-                v = environ[k]
-                if not isinstance(v, bool):
-                    command_line.append(v)
-            commands.append([str(t) for t in command_line])
-    return commands
+                JavaCommands.logger.info("Command completed successfully")
 
 
-def run(commands):
-    for command in commands:
-        sp.run(command)
+def signal_handler(signal, frame):
+    logging.warn('Interrupting execution')
+    sys.exit(0)
 
 
 def main():
+    signal.signal(signal.SIGINT, signal_handler)
     config_path = sys.argv[1]
-    commands = build_commands(load_config(config_path))
-    run(commands)
+    config = load_config(config_path)
+    if config['command'] == 'java':
+        commands = JavaCommands(config)
+
+    commands.run()
 
 
 if __name__ == '__main__':
