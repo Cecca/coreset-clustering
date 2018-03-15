@@ -48,23 +48,28 @@ object Main {
 
     val dist: (Vector, Vector) => Double = {case (a, b) => math.sqrt(Vectors.sqdist(a, b))}
 
-    val (coreset, coresetTime) = timed {
-      arguments.coreset() match {
-        case "mapreduce" =>
+    val (coreset, coresetTime) = arguments.coreset() match {
+      case "mapreduce" =>
+        timed {
           Algorithm.mapReduce(vecs, arguments.tau() + arguments.z.getOrElse(0), dist)
-        case "streaming" =>
-          // FIXME: Don't take into account time to unwind the iterator.
-          val c = Algorithm.streaming(vecs.toLocalIterator, arguments.tau() + arguments.z.getOrElse(0), dist)
-          appendTimers("streaming-profiling", experiment, c.metricRegistry)
-          c
-        case "random" =>
+        }
+      case "streaming" =>
+        val vecsIter = vecs.collect().iterator
+        val result@(c, t) = timed {
+          Algorithm.streaming(vecsIter, arguments.tau() + arguments.z.getOrElse(0), dist)
+        }
+        appendTimers("streaming-profiling", experiment, c.metricRegistry)
+        result
+      case "random" =>
+        timed {
           Algorithm.randomCoreset(vecs, arguments.tau() + arguments.z.getOrElse(0), dist)
-        case "none" =>
-          new Coreset[Vector] {
-            override def points: scala.Vector[ProxyPoint[Vector]] =
-              vecs.map(ProxyPoint.fromPoint).toLocalIterator.toVector
-          }
-      }
+        }
+      case "none" =>
+        val c = new Coreset[Vector] {
+          override def points: scala.Vector[ProxyPoint[Vector]] =
+            vecs.map(ProxyPoint.fromPoint).toLocalIterator.toVector
+        }
+        (c, 0L)
     }
 
     val (centers, centersTime) = timed {
