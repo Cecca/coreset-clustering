@@ -102,6 +102,37 @@ class JavaCommands(object):
                 JavaCommands.logger.info("Command completed successfully")
 
 
+class SparkCommands(object):
+
+    logger = logging.getLogger("SparkCommands")
+    
+    def __init__(self, config):
+        assert config['command'] == 'spark-submit'
+        self.basic_command_line = ['spark-submit']
+        self.basic_command_line.extend([
+            '--master', config['master']
+        ])
+        if 'properties-file' in config:
+            self.basic_command_line.extend([
+                '--properties-file', config['properties-file']
+            ])
+        self.basic_command_line.extend([
+            '--class', config['class']
+        ])
+        self.args = build_args(config)
+        
+    def run(self):
+        for arguments in self.args:
+            cmdline = self.basic_command_line + arguments
+            SparkCommands.logger.info("Running %s", arguments)
+            # process_result = sp.run(cmdline)
+            # if process_result.returncode != 0:
+            #     SparkCommands.logger.error(
+            #         "Command failed with %d error", process_result.returncode)
+            # else:
+            #     SparkCommands.logger.info("Command completed successfully")
+
+
 def signal_handler(signal, frame):
     logging.warn('Interrupting execution')
     sys.exit(0)
@@ -113,7 +144,8 @@ def main():
     config = load_config(config_path)
     if config['command'] == 'java':
         commands = JavaCommands(config)
-
+    elif config['command'] == 'spark-submit':
+        commands = SparkCommands(config)
     commands.run()
 
 
