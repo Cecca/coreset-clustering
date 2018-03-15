@@ -16,6 +16,7 @@ object Main {
     val tau = opt[Int](required = false, default = k.toOption)
     val coreset = opt[String](required = false, default = Some("mapreduce"))
     val forceGmm = toggle(default = Some(false))
+    val parallelism = opt[Int](required = false)
     verify()
 
     def getExperiment(): Experiment = {
@@ -38,9 +39,11 @@ object Main {
     val sparkConf = new SparkConf(loadDefaults = true).setAppName("Clustering")
     val sc = new SparkContext(sparkConf)
 
-    experiment.tag("parallelism", sc.defaultParallelism)
+    val parallelism = arguments.parallelism.getOrElse(sc.defaultParallelism)
 
-    val vecs = VectorIO.readKryo(sc, arguments.input()).repartition(sc.defaultParallelism).cache()
+    experiment.tag("parallelism", parallelism)
+
+    val vecs = VectorIO.readKryo(sc, arguments.input()).repartition(parallelism).cache()
     println(s"Loaded ${vecs.count()} vectors")
 
     val dist: (Vector, Vector) => Double = {case (a, b) => math.sqrt(Vectors.sqdist(a, b))}
