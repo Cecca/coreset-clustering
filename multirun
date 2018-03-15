@@ -109,9 +109,10 @@ class SparkCommands(object):
     def __init__(self, config):
         assert config['command'] == 'spark-submit'
         self.basic_command_line = ['spark-submit']
-        self.basic_command_line.extend([
-            '--master', config['master']
-        ])
+        if 'master' in config:
+            self.basic_command_line.extend([
+                '--master', config['master']
+            ])
         if 'properties-file' in config:
             self.basic_command_line.extend([
                 '--properties-file', config['properties-file']
