@@ -116,7 +116,7 @@ class SparkCommands(object):
             ])
         if 'properties-file' in config:
             self.basic_command_line.extend([
-                '--properties-file', config['properties-file']
+                '--properties-file', os.path.expanduser(config['properties-file'])
             ])
         self.basic_command_line.extend([
             '--class', config['class']
