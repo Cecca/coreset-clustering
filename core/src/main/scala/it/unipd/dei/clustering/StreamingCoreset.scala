@@ -65,7 +65,9 @@ extends Coreset[T] {
   import StreamingCoreset._
 
   val metricRegistry = new MetricRegistry()
-  val updatesTimer = metricRegistry.timer("StreamingCoreset.update")
+  val updatesTimer = metricRegistry.timer("update")
+  val innerUpdateTimer = metricRegistry.timer("innerUpdate")
+  val mergeTimer = metricRegistry.timer("merge")
 
   private def farnessInvariant: Boolean =
     (numKernelPoints == 1) || (minKernelDistance >= threshold)
@@ -190,10 +192,11 @@ extends Coreset[T] {
 
   private[clustering]
   def updateStep(point: T): Boolean = {
+    val t = innerUpdateTimer.time()
     require(!_initializing)
     // Find distance to the closest kernel point
     val (minIdx, minDist) = closestKernelPoint(point)
-    if (minDist > 2 * _threshold) {
+    val r = if (minDist > 2 * _threshold) {
       // Pick the point as a center
       addKernelPoint(point)
       DEBUG(s"New center: $this")
@@ -207,6 +210,8 @@ extends Coreset[T] {
       assert(weightInvariant, "Weight after insertion")
       false
     }
+    t.stop()
+    r
   }
 
   private[clustering]
@@ -228,6 +233,7 @@ extends Coreset[T] {
 
   private[clustering]
   def merge(): Unit = {
+    val t = mergeTimer.time()
     // Use the `kernel` array as if divided in 3 zones:
     //
     //  - selected: initially empty, stores all the selected nodes.
@@ -255,7 +261,7 @@ extends Coreset[T] {
           _weights(bottomIdx) += _weights(candidateIdx)
           // update the radius as the maximum between the two.
           // Here we are losing something because of the triangle inequality
-          // TODO: CHeck if this is an issue
+          // TODO: Check if this is an issue
           _radii(bottomIdx) = math.max(_radii(bottomIdx), _radii(candidateIdx))
 
           // Move the candidate (and all its data) to the end of the array
@@ -284,6 +290,7 @@ extends Coreset[T] {
     // TODO: Check the invariant of radius
 //    assert(radiusInvariant, "Radius after merge")
     assert(weightInvariant, s"Weight after merge: $weight when we have seen ${_seen} points")
+    t.stop()
   }
 
   /**

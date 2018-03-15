@@ -4,7 +4,7 @@ import it.unipd.dei.experiment.Experiment
 import org.apache.spark.ml.linalg.{Vector, Vectors}
 import org.apache.spark.{SparkConf, SparkContext}
 import org.rogach.scallop.ScallopConf
-import it.unipd.dei.clustering.ExperimentUtils.{jMap, timed}
+import it.unipd.dei.clustering.ExperimentUtils.{jMap, timed, appendTimers}
 import MemoryUtils._
 
 object Main {
@@ -53,10 +53,9 @@ object Main {
         case "mapreduce" =>
           Algorithm.mapReduce(vecs, arguments.tau() + arguments.z.getOrElse(0), dist)
         case "streaming" =>
+          // FIXME: Don't take into account time to unwind the iterator.
           val c = Algorithm.streaming(vecs.toLocalIterator, arguments.tau() + arguments.z.getOrElse(0), dist)
-          experiment.append("streaming-profiling", jMap(
-            "restructurings" -> c.numRestructurings
-          ))
+          appendTimers("streaming-profiling", experiment, c.metricRegistry)
           c
         case "random" =>
           Algorithm.randomCoreset(vecs, arguments.tau() + arguments.z.getOrElse(0), dist)

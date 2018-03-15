@@ -17,6 +17,7 @@ CLASSPATH=$(cat $CLASSPATH_FILE)
 java \
 	-Dspark.master="local[*]" \
 	-Dspark.default.parallelism=$(nproc)\
+	-Dexperiment.reporter.compress=false\
 	-Xmx4G \
 	-XX:+UseG1GC \
 	-cp $CLASSPATH it.unipd.dei.clustering.$1 ${@:2}
