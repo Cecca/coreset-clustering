@@ -7,6 +7,7 @@ from pprint import pprint
 from itertools import product
 import logging
 import signal
+import os
 
 
 FORMAT = '%(asctime)-15s %(message)s'
@@ -120,18 +121,19 @@ class SparkCommands(object):
         self.basic_command_line.extend([
             '--class', config['class']
         ])
+        self.basic_command_line.append(os.path.expanduser(config['jar']))
         self.args = build_args(config)
         
     def run(self):
         for arguments in self.args:
             cmdline = self.basic_command_line + arguments
             SparkCommands.logger.info("Running %s", arguments)
-            # process_result = sp.run(cmdline)
-            # if process_result.returncode != 0:
-            #     SparkCommands.logger.error(
-            #         "Command failed with %d error", process_result.returncode)
-            # else:
-            #     SparkCommands.logger.info("Command completed successfully")
+            process_result = sp.run(cmdline)
+            if process_result.returncode != 0:
+                SparkCommands.logger.error(
+                    "Command failed with %d error", process_result.returncode)
+            else:
+                SparkCommands.logger.info("Command completed successfully")
 
 
 def signal_handler(signal, frame):
