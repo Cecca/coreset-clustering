@@ -42,6 +42,11 @@ lazy val root = (project in file(".")).
 /** Configuration for benchmarks */
 lazy val Benchmark = config("bench") extend Test
 
+lazy val sparkDeps = Seq(
+  "org.apache.spark" %% "spark-core" % "2.2.0" % "provided",
+  "org.apache.spark" %% "spark-mllib" % "2.2.0" % "provided"
+)
+
 lazy val core = (project in file("core")).
   settings(commonSettings: _*).
   settings(
@@ -50,10 +55,8 @@ lazy val core = (project in file("core")).
     //  filterDeps(
         Seq(
           "com.storm-enroute" %% "scalameter" % "0.7" % "bench",
-          "io.dropwizard.metrics" % "metrics-core" % "3.1.2",
-          "org.apache.spark" %% "spark-core" % "2.2.0",// % "provided",
-          "org.apache.spark" %% "spark-mllib" % "2.2.0"// % "provided",
-        )
+          "io.dropwizard.metrics" % "metrics-core" % "3.1.2"
+        ) ++ sparkDeps
       //)
     ,
     testFrameworks in Benchmark += new TestFramework("org.scalameter.ScalaMeterFramework"),
@@ -74,10 +77,18 @@ lazy val experiments = (project in file("experiments")).
         Seq(
           "it.unipd.dei" % "experiment-reporter" % "0.4.0",
           "org.rogach" %% "scallop" % "3.1.1"
-        ),
+        ) ++ sparkDeps ,
       //)
     parallelExecution in Test := false,
     fork in Test := true
+  ).
+  settings(
+    assemblyMergeStrategy in assembly := {
+      case PathList(ps @ _*) if ps.last endsWith ".html" => MergeStrategy.discard
+      case x =>
+        val oldStrategy = (assemblyMergeStrategy in assembly).value
+        oldStrategy(x)
+    }
   ).
   enablePlugins(BuildInfoPlugin).
   settings(
