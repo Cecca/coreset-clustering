@@ -167,7 +167,7 @@ extends Coreset[T] {
       _threshold = minDist
     }
     addKernelPoint(point)
-    DEBUG(s"New center: $this")
+//    DEBUG(s"New center: $this")
     assert(weightInvariant, "Weight after new center")
     if (_insertionIdx == _kernel.length) {
       _initializing = false
@@ -199,14 +199,14 @@ extends Coreset[T] {
     val r = if (minDist > 2 * _threshold) {
       // Pick the point as a center
       addKernelPoint(point)
-      DEBUG(s"New center: $this")
+//      DEBUG(s"New center: $this")
       assert(weightInvariant, "Weight after new center")
       true
     } else {
       // Increment the weight of the center
       _weights(minIdx) += 1
       _radii(minIdx) = math.max(_radii(minIdx), minDist)
-      DEBUG(s"Discarded element: $this")
+//      DEBUG(s"Discarded element: $this")
       assert(weightInvariant, "Weight after insertion")
       false
     }
@@ -246,8 +246,8 @@ extends Coreset[T] {
     _threshold *= 2
     _numRestructurings += 1
 
-    DEBUG(s"Threshold ${_threshold}")
-    DEBUG(s"Before $this")
+//    DEBUG(s"Threshold ${_threshold}")
+//    DEBUG(s"Before $this")
     var bottomIdx = 0
     var topIdx = _kernel.length - 1
     while (bottomIdx <= topIdx) {
@@ -255,7 +255,7 @@ extends Coreset[T] {
       var candidateIdx = bottomIdx + 1
       // Discard the points that are too close to the pivot
       while (candidateIdx <= topIdx) {
-        DEBUG(s"bottom: $bottomIdx candidate: $candidateIdx, top: $topIdx")
+//        DEBUG(s"bottom: $bottomIdx candidate: $candidateIdx, top: $topIdx")
         if (distance(pivot, _kernel(candidateIdx)) <= _threshold) {
           // Add all the weight of the to-be-discarded candidate to the pivot
           _weights(bottomIdx) += _weights(candidateIdx)
@@ -266,14 +266,14 @@ extends Coreset[T] {
 
           // Move the candidate (and all its data) to the end of the array
           swapData(candidateIdx, topIdx)
-          DEBUG(s"Discadring $candidateIdx")
+//          DEBUG(s"Discadring $candidateIdx")
           topIdx -= 1
         } else {
           // Keep the point in the candidate zone
-          DEBUG(s"Keeping $candidateIdx as candidate")
+//          DEBUG(s"Keeping $candidateIdx as candidate")
           candidateIdx += 1
         }
-        DEBUG(s"After $this")
+//        DEBUG(s"After $this")
       }
 //       Move to the next point to be retained
       bottomIdx += 1
@@ -283,7 +283,7 @@ extends Coreset[T] {
     // Set the new insertionIdx
     _insertionIdx = bottomIdx
 
-    DEBUG(s"After merge $this")
+//    DEBUG(s"After merge $this")
 
     // Check the invariant of the minimum distance between kernel points
     assert(farnessInvariant, "Farness after merge")
@@ -298,7 +298,7 @@ extends Coreset[T] {
     * Return true if the point is added to the inner core-set
     */
   def update(point: T): Boolean = {
-    DEBUG(s"Processing point $point")
+//    DEBUG(s"Processing point $point")
     val t = updatesTimer.time()
     // the _insertionIdx variable is modified inside the merge() method
     while (_insertionIdx == _kernel.length) {

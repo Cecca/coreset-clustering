@@ -17,6 +17,7 @@ CLASSPATH=$(cat $CLASSPATH_FILE)
 java \
 	-Dspark.master="local[*]" \
 	-Dspark.default.parallelism=$(nproc)\
+	-Dspark.serializer=org.apache.spark.serializer.KryoSerializer\
 	-Dexperiment.reporter.compress=false\
 	-Xmx4G \
 	-XX:+UseG1GC \
