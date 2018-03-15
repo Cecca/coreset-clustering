@@ -53,7 +53,11 @@ object Main {
         case "mapreduce" =>
           Algorithm.mapReduce(vecs, arguments.tau() + arguments.z.getOrElse(0), dist)
         case "streaming" =>
-          Algorithm.streaming(vecs.toLocalIterator, arguments.tau() + arguments.z.getOrElse(0), dist)
+          val c = Algorithm.streaming(vecs.toLocalIterator, arguments.tau() + arguments.z.getOrElse(0), dist)
+          experiment.append("streaming-profiling", jMap(
+            "restructurings" -> c.numRestructurings
+          ))
+          c
         case "random" =>
           Algorithm.randomCoreset(vecs, arguments.tau() + arguments.z.getOrElse(0), dist)
         case "none" =>

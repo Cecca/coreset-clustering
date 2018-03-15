@@ -3,7 +3,7 @@ package it.unipd.dei.clustering
 object Debug {
 
   def DEBUG(str: String): Unit =
-    if (true) {
+    if (false) {
       println(str)
     }
 

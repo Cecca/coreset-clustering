@@ -33,7 +33,7 @@ object Algorithm {
     }
   }
 
-  def streaming[T:ClassTag](stream: Iterator[T], tau: Int, distance: (T, T) => Double): Coreset[T] = {
+  def streaming[T:ClassTag](stream: Iterator[T], tau: Int, distance: (T, T) => Double): StreamingCoreset[T] = {
     val coreset = new StreamingCoreset[T](tau, distance)
     while(stream.hasNext) {
       coreset.update(stream.next())
