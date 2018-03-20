@@ -21,6 +21,9 @@ object ExperimentUtils {
     case v: Int => v: java.lang.Integer
     case v: Float => v: java.lang.Float
     case v: Double => v: java.lang.Double
+    case v: org.apache.spark.ml.linalg.Vector =>
+      println("Converting Vector!")
+      v.toArray
     case Some(v) => s2j(v)
     case None => null
     case obj: java.lang.Object => obj

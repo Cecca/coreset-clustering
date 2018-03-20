@@ -103,6 +103,9 @@ object Main {
       "component" -> "centers",
       "time" -> centersTime
     ))
+    experiment.append("centers", jMap(
+      "centers" -> centers.map(_.point.toArray).toArray
+    ))
 
     experiment.saveAsJsonFile()
   }
