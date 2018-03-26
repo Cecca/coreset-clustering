@@ -142,17 +142,20 @@ object GMM {
       var i = 0
       while (i < k) {
         val currentCenter = points(currentCenterIdx)
-        var farthestIdx = 0
-        var maxDist = 0.0
-
-        var h = 0
-        while (h < points.length) {
-          // Look for the farthest node
+        // update distances in parallel, in place
+        points.indices.par.foreach { h =>
           val lastDist = distance(points(h), currentCenter)
           if (lastDist < minDist(h)) {
             minDist(h) = lastDist
             assignement(h) = currentCenterIdx
           }
+        }
+
+        var farthestIdx = 0
+        var maxDist = 0.0
+
+        var h = 0
+        while (h < points.length) {
           if (minDist(h) > maxDist) {
             maxDist = minDist(h)
             farthestIdx = h

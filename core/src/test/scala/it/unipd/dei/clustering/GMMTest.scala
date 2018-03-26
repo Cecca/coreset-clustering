@@ -62,7 +62,6 @@ object GMMTest extends Properties("FarthestPointHeuristic") {
     forAll(Gen.listOf[Double](Gen.choose[Double](0.0, 1.0)), Gen.choose[Int](2, 100))
     { (pts: List[Double], k: Int) =>
       (pts.size >= 2 && k < pts.size) ==> {
-        println("=======================")
         val points = pts.map(p => Point(p)).toArray
         val centers = GMM.run(points, k, 0, distance).toSet
         val (assignement, distances) = GMM.runWithAssignement(points, k, 0, distance)
