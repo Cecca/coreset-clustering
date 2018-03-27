@@ -106,6 +106,8 @@ object Main {
     experiment.append("centers", jMap(
       "centers" -> centers.map(_.point.toArray).toArray
     ))
+    experiment.append("coreset", jMap(
+      "actual-coreset-size" -> coreset.points.size))
 
     experiment.saveAsJsonFile()
   }
