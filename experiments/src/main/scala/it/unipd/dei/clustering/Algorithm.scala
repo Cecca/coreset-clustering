@@ -26,17 +26,25 @@ object Algorithm {
   }
 
   def mapReduce[T:ClassTag](rdd: RDD[T], tau: Int, distance: (T, T) => Double): Coreset[T] = {
-    rdd.glom().map { points =>
+    val coreset = rdd.glom().map { points =>
       MapReduceCoreset.run(points, tau, distance)
     }.reduce { case (a, b) =>
       MapReduceCoreset.compose(a, b)
     }
+    if (coreset.points.size != tau*rdd.getNumPartitions) {
+      throw new IllegalArgumentException(s"Coreset has ${coreset.points.size} instead of ${tau*rdd.getNumPartitions}")
+    }
+
+    coreset
   }
 
   def streaming[T:ClassTag](stream: Iterator[T], tau: Int, distance: (T, T) => Double): StreamingCoreset[T] = {
     val coreset = new StreamingCoreset[T](tau, distance)
     while(stream.hasNext) {
       coreset.update(stream.next())
+    }
+    if (coreset.points.size > tau) {
+      throw new IllegalArgumentException(s"Coreset has ${coreset.points.size} instead of $tau")
     }
     coreset
   }
