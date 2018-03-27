@@ -35,9 +35,9 @@ object StreamingCoresetBench extends Bench.OfflineReport {
     size <- Gen.range("num-points")(10000, 30000, 10000)
   } yield Array.ofDim[Point](size).map{_ => Point.random(spaceDimension, randomGen)}
 
-  val ks: Gen[Int] = Gen.range("k")(10, 30, 10)
+  val ks: Gen[Int] = Gen.range("k")(10, 1000, 100)
 
-  val kernelSizes: Gen[Int] = Gen.range("k")(100, 300, 100)
+  val kernelSizes: Gen[Int] = Gen.range("k")(300, 300, 100)
 
   val params: Gen[(Array[Point], Int, Int)] = for {
     points <- sets
@@ -47,17 +47,17 @@ object StreamingCoresetBench extends Bench.OfflineReport {
 
   performance of "streaming" in {
 
-    measure method "baseline" in {
-      using(params) in { case (points, size, k) =>
-        val zero = Point(Array.fill[Double](spaceDimension)(0.0))
-        var sum = 0.0
-        var i = 0
-        while (i < points.length) {
-          sum += distance(points(i), zero)
-          i += 1
-        }
-      }
-    }
+//    measure method "baseline" in {
+//      using(params) in { case (points, size, k) =>
+//        val zero = Point(Array.fill[Double](spaceDimension)(0.0))
+//        var sum = 0.0
+//        var i = 0
+//        while (i < points.length) {
+//          sum += distance(points(i), zero)
+//          i += 1
+//        }
+//      }
+//    }
 
     measure method "coreset" in {
       using(params) in { case (points, size, k) =>
