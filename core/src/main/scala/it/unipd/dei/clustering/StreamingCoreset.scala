@@ -178,9 +178,9 @@ extends Coreset[T] {
     var idx = 0
     var mDist = Double.PositiveInfinity
     var mIdx = 0
-    val kps = kernelPointsIterator
-    while(kps.hasNext) {
-      val d = distance(kps.next(), point)
+    val maxIdx = numKernelPoints
+    while(idx < maxIdx) {
+      val d = distance(_kernel(idx), point)
       if (d < mDist) {
         mDist = d
         mIdx = idx
