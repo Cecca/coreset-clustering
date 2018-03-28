@@ -174,6 +174,8 @@ object Outliers {
     DEBUG("============================================")
     DEBUG(s"Lower ${candidates(lower)} upper ${candidates(upper)} ($upper candidates)")
 
+    var lastGood: Option[(IndexedSeq[ProxyPoint[T]], IndexedSeq[ProxyPoint[T]])] = None
+
     while (lower <= upper) {
       val mid: Long= (lower + upper) / 2
       DEBUG(s"Testing ${candidates(mid)} (lower $lower current $mid upper $upper)")
@@ -188,6 +190,7 @@ object Outliers {
         lower = mid + 1
       } else {
         DEBUG("Too few outliers, lowering upper bound")
+        lastGood = Some(sol, outliers)
         upper = mid - 1
       }
     }
@@ -198,7 +201,13 @@ object Outliers {
     }}).max
 
     if (outliers.map(_.weight).sum > z) {
-      throw new IllegalStateException(s"The outliers proxy cannot weight more than z=$z! (current weight is ${outliers.map(_.weight).sum})")
+      lastGood match {
+        case Some((s, o)) =>
+          sol = s
+          outliers = o
+        case None =>
+          throw new IllegalStateException(s"The outliers proxy cannot weight more than z=$z! (current weight is ${outliers.map(_.weight).sum})")
+      }
     }
 
     DEBUG(s"Radius of clustering on proxy set (excluding outliers): $actualRadius")
