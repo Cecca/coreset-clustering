@@ -4,8 +4,10 @@ import it.unipd.dei.experiment.Experiment
 import org.apache.spark.ml.linalg.{Vector, Vectors}
 import org.apache.spark.{SparkConf, SparkContext}
 import org.rogach.scallop.ScallopConf
-import it.unipd.dei.clustering.ExperimentUtils.{jMap, timed, appendTimers}
+import it.unipd.dei.clustering.ExperimentUtils.{appendTimers, jMap, timed}
 import MemoryUtils._
+
+import scala.util.Random
 
 object Main {
 
@@ -43,7 +45,11 @@ object Main {
 
     experiment.tag("parallelism", parallelism)
 
-    val vecs = VectorIO.readKryo(sc, arguments.input()).repartition(parallelism).cache()
+    val vecs = VectorIO.readKryo(sc, arguments.input())
+      .keyBy(_ => Random.nextLong())
+      .repartition(parallelism)
+      .values
+      .cache()
     println(s"Loaded ${vecs.count()} vectors")
 
     val dist: (Vector, Vector) => Double = {case (a, b) => math.sqrt(Vectors.sqdist(a, b))}
