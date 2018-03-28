@@ -174,20 +174,21 @@ object Outliers {
     DEBUG("============================================")
     DEBUG(s"Lower ${candidates(lower)} upper ${candidates(upper)} ($upper candidates)")
 
-    while (lower < upper-1) {
-      val mid: Long = (lower + upper) / 2
+    while (lower <= upper) {
+      val mid: Long= (lower + upper) / 2
       DEBUG(s"Testing ${candidates(mid)} (lower $lower current $mid upper $upper)")
       val (tmpSol, tmpOutliers) = runMat(points, k, candidates(mid), proxyRadius, distances)
       sol = tmpSol
       outliers = tmpOutliers
       val outliersWeight = outliers.map(_.weight).sum
       DEBUG(s"Outliers weight $outliersWeight (max $z)")
+
       if (outliersWeight > z) {
         DEBUG("Too many outliers, raising the lower bound")
-        lower = mid
+        lower = mid + 1
       } else {
         DEBUG("Too few outliers, lowering upper bound")
-        upper = mid
+        upper = mid - 1
       }
     }
 
