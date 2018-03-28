@@ -92,6 +92,7 @@ extends Coreset[T] {
   private val _kernel = Array.ofDim[T](kernelSize + 1)
   private val _weights = Array.ofDim[Long](_kernel.length)
   private val _radii = Array.ofDim[Double](_kernel.length)
+  private val _kernelDistances = Array.ofDim[Double](_kernel.length, _kernel.length)
 
   private[clustering]
   def initializing: Boolean = _initializing
@@ -119,6 +120,15 @@ extends Coreset[T] {
     _kernel(_insertionIdx) = point
     _weights(_insertionIdx) = 1L
     _radii(_insertionIdx) = 0.0
+    _kernelDistances(_insertionIdx)(_insertionIdx) = 0.0
+    var idx = 0
+    while (idx < _insertionIdx) {
+      val d = currentPointToKernelDist(idx)
+      _kernelDistances(_insertionIdx)(idx) = d
+      _kernelDistances(idx)(_insertionIdx) = d
+      idx += 1
+    }
+
     _insertionIdx += 1
   }
 
@@ -174,6 +184,8 @@ extends Coreset[T] {
     }
   }
 
+  private val currentPointToKernelDist = Array.ofDim[Double](_kernel.length)
+
   private def closestKernelPoint(point: T): (Int, Double) = {
     var idx = 0
     var mDist = Double.PositiveInfinity
@@ -181,6 +193,7 @@ extends Coreset[T] {
     val maxIdx = numKernelPoints
     while(idx < maxIdx) {
       val d = distance(_kernel(idx), point)
+      currentPointToKernelDist(idx) = d
       if (d < mDist) {
         mDist = d
         mIdx = idx
@@ -251,12 +264,13 @@ extends Coreset[T] {
     var bottomIdx = 0
     var topIdx = _kernel.length - 1
     while (bottomIdx <= topIdx) {
-      val pivot = _kernel(bottomIdx)
+      val pivotIdx = bottomIdx
+//      val pivot = _kernel(bottomIdx)
       var candidateIdx = bottomIdx + 1
       // Discard the points that are too close to the pivot
       while (candidateIdx <= topIdx) {
 //        DEBUG(s"bottom: $bottomIdx candidate: $candidateIdx, top: $topIdx")
-        if (distance(pivot, _kernel(candidateIdx)) <= _threshold) {
+        if (_kernelDistances(pivotIdx)(candidateIdx) <= _threshold) {
           // Add all the weight of the to-be-discarded candidate to the pivot
           _weights(bottomIdx) += _weights(candidateIdx)
           // update the radius as the maximum between the two.
