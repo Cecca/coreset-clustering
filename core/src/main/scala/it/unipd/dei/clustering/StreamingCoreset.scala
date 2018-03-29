@@ -275,8 +275,7 @@ extends Coreset[T] {
           _weights(bottomIdx) += _weights(candidateIdx)
           // update the radius as the maximum between the two.
           // Here we are losing something because of the triangle inequality
-          // TODO: Check if this is an issue
-          _radii(bottomIdx) = math.max(_radii(bottomIdx), _radii(candidateIdx))
+          _radii(bottomIdx) = _radii(bottomIdx) + _radii(candidateIdx)
 
           // Move the candidate (and all its data) to the end of the array
           swapData(candidateIdx, topIdx)
