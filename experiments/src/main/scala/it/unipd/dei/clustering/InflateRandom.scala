@@ -40,13 +40,13 @@ object InflateRandom {
     val sizeFactor = opts.sizeFactor()
 
     val inflated = original.glom().flatMap({ vecs =>
-      (0 until (vecs.length * (sizeFactor-1))).map({ _ =>
+      (0 until (vecs.length * (sizeFactor-1))).iterator.map({ _ =>
         val data = vecs(Random.nextInt(vecs.length)).copy.toArray
         for (i <- deviations.indices) {
           data(i) += Random.nextGaussian() * deviations(i)
         }
         Vectors.dense(data)
-      }) ++ vecs
+      }) ++ vecs.iterator
     })
 
     VectorIO.writeKryo(inflated, opts.output())
