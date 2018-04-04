@@ -231,19 +231,8 @@ trait SortedDistanceVector {
 
 class DistributedDistanceMatrix(val data: RDD[Array[Double]], val bWeights: Broadcast[Array[Long]]) extends DistanceMatrix {
 
-  def ballWeight[T](radius: Double): Array[Long] = {
-    data.map { row =>
-      var sum = 0L
-      var i = 0
-      while (i < row.length){
-        if (row(i) <= radius) {
-          sum += bWeights.value(i)
-        }
-        i += 1
-      }
-      sum
-    }.collect()
-  }
+  def ballWeight[T](radius: Double): Array[Long] =
+    DistributedDistanceMatrix.ballWeight(data, bWeights, radius)
 
   def row(i: Int): Array[Double] = data.zipWithIndex().filter(_._2 == i).collect()(0)._1
 
@@ -266,6 +255,21 @@ object DistributedDistanceMatrix {
     }.cache()
     new DistributedDistanceMatrix(data, bWeights)
   }
+
+  def ballWeight[T](data: RDD[Array[Double]], bWeights: Broadcast[Array[Long]], radius: Double): Array[Long] = {
+    data.map { row =>
+      var sum = 0L
+      var i = 0
+      while (i < row.length){
+        if (row(i) <= radius) {
+          sum += bWeights.value(i)
+        }
+        i += 1
+      }
+      sum
+    }.collect()
+  }
+
 
 }
 
