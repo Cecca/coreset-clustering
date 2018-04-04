@@ -21,7 +21,9 @@ object Algorithm {
     if (z == 0) {
       distances.max()
     } else {
-      distances.top(z+1).last
+      val topDists = distances.top(z+1)
+      println(s"Top ${z+1} distances: ${topDists.reverse.mkString("\n")}")
+      topDists.last
     }
   }
 
