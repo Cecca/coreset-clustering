@@ -43,8 +43,6 @@ object Main {
 
     val parallelism = arguments.parallelism.getOrElse(sc.defaultParallelism)
 
-    experiment.tag("parallelism", parallelism)
-
     val vecs = VectorIO.readKryo(sc, arguments.input())
       .keyBy(_ => Random.nextLong())
       .repartition(parallelism)
@@ -56,10 +54,12 @@ object Main {
 
     val (coreset, coresetTime) = arguments.coreset() match {
       case "mapreduce" =>
+        experiment.tag("parallelism", parallelism)
         timed {
           Algorithm.mapReduce(vecs, arguments.tau() + arguments.z.getOrElse(0), dist)
         }
       case "streaming" =>
+        experiment.tag("parallelism", 1)
         val vecsIter = vecs.collect().iterator
         val result@(c, t) = timed {
           Algorithm.streaming(vecsIter, arguments.tau() + arguments.z.getOrElse(0), dist)
@@ -67,10 +67,12 @@ object Main {
         appendTimers("streaming-profiling", experiment, c.metricRegistry)
         result
       case "random" =>
+        experiment.tag("parallelism", parallelism)
         timed {
           Algorithm.randomCoreset(vecs, arguments.tau() + arguments.z.getOrElse(0), dist)
         }
       case "none" =>
+        experiment.tag("parallelism", 1)
         val c = new Coreset[Vector] {
           override def points: scala.Vector[ProxyPoint[Vector]] =
             vecs.map(ProxyPoint.fromPoint).toLocalIterator.toVector
