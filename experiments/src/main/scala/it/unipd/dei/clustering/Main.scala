@@ -60,10 +60,12 @@ object Main {
         }
       case "streaming" =>
         experiment.tag("parallelism", 1)
-        val vecsIter = vecs.collect().iterator
+        val localVectors = vecs.collect()
         val result@(c, t) = timed {
-          Algorithm.streaming(vecsIter, arguments.tau() + arguments.z.getOrElse(0), dist)
+          Algorithm.streaming(localVectors.iterator, arguments.tau() + arguments.z.getOrElse(0), dist)
         }
+        println("Fixing radii")
+        c.fixRadii(localVectors.iterator)
         appendTimers("streaming-profiling", experiment, c.metricRegistry)
         result
       case "random" =>

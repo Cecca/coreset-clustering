@@ -16,6 +16,7 @@
 
 package it.unipd.dei.clustering
 
+import java.util
 import java.util.ConcurrentModificationException
 
 import com.codahale.metrics.MetricRegistry
@@ -327,4 +328,14 @@ extends Coreset[T] {
     kernelPointsIterator.zip(_weights.iterator).zip(_radii.iterator).map { case ((center, weight), radius) =>
       ProxyPoint[T](center, weight, radius)
     }.toVector
+
+  def fixRadii(points: Iterator[T]) = {
+    util.Arrays.fill(_radii, 0.0)
+    while (points.hasNext) {
+      val p = points.next()
+      val (minIdx, minDist) = closestKernelPoint(p)
+      _radii(minIdx) = math.max(_radii(minIdx), minDist)
+    }
+  }
+
 }
