@@ -92,7 +92,6 @@ extends Coreset[T] {
   private val _kernel = Array.ofDim[T](kernelSize + 1)
   private val _weights = Array.ofDim[Long](_kernel.length)
   private val _radii = Array.ofDim[Double](_kernel.length)
-  private val _kernelDistances = Array.ofDim[Double](_kernel.length, _kernel.length)
 
   private[clustering]
   def initializing: Boolean = _initializing
@@ -120,14 +119,6 @@ extends Coreset[T] {
     _kernel(_insertionIdx) = point
     _weights(_insertionIdx) = 1L
     _radii(_insertionIdx) = 0.0
-    _kernelDistances(_insertionIdx)(_insertionIdx) = 0.0
-    var idx = 0
-    while (idx < _insertionIdx) {
-      val d = currentPointToKernelDist(idx)
-      _kernelDistances(_insertionIdx)(idx) = d
-      _kernelDistances(idx)(_insertionIdx) = d
-      idx += 1
-    }
 
     _insertionIdx += 1
   }
@@ -270,12 +261,12 @@ extends Coreset[T] {
       // Discard the points that are too close to the pivot
       while (candidateIdx <= topIdx) {
 //        DEBUG(s"bottom: $bottomIdx candidate: $candidateIdx, top: $topIdx")
-        if (_kernelDistances(pivotIdx)(candidateIdx) <= _threshold) {
+        if (distance(_kernel(pivotIdx), _kernel(candidateIdx)) <= _threshold) {
           // Add all the weight of the to-be-discarded candidate to the pivot
           _weights(bottomIdx) += _weights(candidateIdx)
           // update the radius as the maximum between the two.
           // Here we are losing something because of the triangle inequality
-          _radii(bottomIdx) = _radii(bottomIdx) + _radii(candidateIdx)
+          _radii(bottomIdx) = math.max(_radii(bottomIdx), _radii(candidateIdx))
 
           // Move the candidate (and all its data) to the end of the array
           swapData(candidateIdx, topIdx)
