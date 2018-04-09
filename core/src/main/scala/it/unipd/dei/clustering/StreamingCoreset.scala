@@ -168,10 +168,15 @@ extends Coreset[T] {
   private[clustering]
   def initializationStep(point: T): Unit = {
     require(_initializing)
-    val minDist = closestKernelDistance(point)
+    val (minIdx, minDist) = closestKernelPoint(point)
+    if (_kernel(minIdx) == point) {
+      DEBUG("Skipping duplicate point!")
+      return
+    }
     if (minDist < _threshold) {
       _threshold = minDist
     }
+    require(_threshold > 0.0, "Threshold is zero!")
     addKernelPoint(point)
 //    DEBUG(s"New center: $this")
     assert(weightInvariant, "Weight after new center")
@@ -254,6 +259,7 @@ extends Coreset[T] {
     require(_insertionIdx == _kernel.length)
     _threshold *= 2
     _numRestructurings += 1
+    DEBUG(s"Merge, new threshold: ${_threshold}")
 
 //    DEBUG(s"Threshold ${_threshold}")
 //    DEBUG(s"Before $this")
