@@ -18,8 +18,9 @@ package it.unipd.dei.clustering
 
 import java.util
 import java.util.ConcurrentModificationException
+import java.util.concurrent.TimeUnit
 
-import com.codahale.metrics.MetricRegistry
+import com.codahale.metrics.{ConsoleReporter, MetricRegistry}
 import it.unipd.dei.clustering.Utils._
 import it.unipd.dei.clustering.Debug.DEBUG
 
@@ -69,6 +70,9 @@ extends Coreset[T] {
   val updatesTimer = metricRegistry.timer("update")
   val innerUpdateTimer = metricRegistry.timer("innerUpdate")
   val mergeTimer = metricRegistry.timer("merge")
+
+  val reporter = ConsoleReporter.forRegistry(metricRegistry).build();
+  reporter.start(5, TimeUnit.SECONDS)
 
   private def farnessInvariant: Boolean =
     (numKernelPoints == 1) || (minKernelDistance >= threshold)

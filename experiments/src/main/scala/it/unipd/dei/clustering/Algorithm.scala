@@ -48,6 +48,7 @@ object Algorithm {
     if (coreset.points.size > tau) {
       throw new IllegalArgumentException(s"Coreset has ${coreset.points.size} instead of $tau")
     }
+    coreset.reporter.stop()
     coreset
   }
 
