@@ -8,11 +8,11 @@ The code is based on Spark, which has problems running on Java 9 (at least as of
 
 To build the code the following command is sufficient
 
-  sbt compile
+    sbt compile
 
 If you want a "fat jar" suitable for deployment on a Spark cluster, use the following command
 
-  sbt assembly
+    sbt assembly
 
 Insteaed, if you just want to test the software locally, just use the provided `run` script.
 
@@ -21,7 +21,7 @@ Running the program
 
 To see all the available options:
 
-  ./run Main --help
+    ./run Main --help
 
 The main parameters are the following:
 
@@ -48,13 +48,13 @@ Both datasets need some preprocessing to be used as input to the software.
 
 ### Preparing the Higgs dataset
 
-  wget https://archive.ics.uci.edu/ml/machine-learning-databases/00280/HIGGS.csv.gz
-  cat HIGGS.csv.gz | gunzip | cut -d ',' -f 23,24,25,26,27,28,29 | gzip > Higgs.csv.gz
-  ./run VectorIO Higgs.csv.gz Higgs.bin
+    wget https://archive.ics.uci.edu/ml/machine-learning-databases/00280/HIGGS.csv.gz
+    cat HIGGS.csv.gz | gunzip | cut -d ',' -f 23,24,25,26,27,28,29 | gzip > Higgs.csv.gz
+    ./run VectorIO Higgs.csv.gz Higgs.bin
 
 ### Preparing the Power dataset
 
-  wget https://archive.ics.uci.edu/ml/machine-learning-databases/00235/household_power_consumption.zip
-  unzip household_power_consumption.zip
-  cat household_power_consumption.txt | sed 1d | cut -d ';' -f 1,2 --complement | sed "s/;/,/g" > household_power_consumption.csv
-  ./run VectorIO household_power_consumption.csv power.bin
+    wget https://archive.ics.uci.edu/ml/machine-learning-databases/00235/household_power_consumption.zip
+    unzip household_power_consumption.zip
+    cat household_power_consumption.txt | sed 1d | cut -d ';' -f 1,2 --complement | sed "s/;/,/g" > household_power_consumption.csv
+    ./run VectorIO household_power_consumption.csv power.bin
