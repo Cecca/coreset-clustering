@@ -15,7 +15,7 @@ object Main {
     val input = opt[String](required = true)
     val k = opt[Int](required = true)
     val z = opt[Int](required = false)
-    val tau = opt[Int](required = false, default = k.toOption)
+    val sizeFactor = opt[Double](required = false, default = Some(1), validate = _ >= 1.0)
     val coreset = opt[String](required = false, default = Some("mapreduce"))
     val forceGmm = toggle(default = Some(false))
     val parallelism = opt[Int](required = false)
@@ -26,7 +26,7 @@ object Main {
         .tag("input", input())
         .tag("k", k())
         .tag("z", z.getOrElse(-1))
-        .tag("tau", tau())
+        .tag("sizeFactor", sizeFactor())
         .tag("coreset", coreset())
         .tag("force-gmm", forceGmm())
     }
@@ -52,7 +52,7 @@ object Main {
       case "mapreduce-shuffle" =>
         experiment.tag("parallelism", parallelism)
         val logn = math.ceil(math.log(numVecs)).toInt
-        val coresetSize: Int = arguments.tau() + (arguments.z.getOrElse(0) / parallelism) + logn
+        val coresetSize: Int = math.ceil(arguments.sizeFactor() * (arguments.k() + (arguments.z.getOrElse(0) / parallelism) + logn)).toInt
         println(s"Computing coreset of size $coresetSize")
         timed {
           val shuffled = vecs.keyBy(_ => Random.nextInt()).repartition(parallelism).cache().values
@@ -60,20 +60,22 @@ object Main {
         }
       case "mapreduce" =>
         experiment.tag("parallelism", parallelism)
+        val coresetSize: Int = math.ceil(arguments.sizeFactor() * (arguments.k() + arguments.z.getOrElse(0))).toInt
         val repartitioned = vecs.repartition(parallelism).cache()
         repartitioned.count()
         println("Repartitioned the vectors")
         timed {
-          Algorithm.mapReduce(repartitioned, arguments.tau() + arguments.z.getOrElse(0), dist)
+          Algorithm.mapReduce(repartitioned, coresetSize, dist)
         }
       case "streaming" =>
         experiment.tag("parallelism", 1)
+        val coresetSize: Int = math.ceil(arguments.sizeFactor() * (arguments.k() + arguments.z.getOrElse(0))).toInt
         val localVectors = vecs // Randomly partition the vectors
           .keyBy(_ => Random.nextLong())
           .values
           .collect()
         val result@(c, t) = timed {
-          Algorithm.streaming(localVectors.iterator, arguments.tau() + arguments.z.getOrElse(0), dist)
+          Algorithm.streaming(localVectors.iterator, coresetSize, dist)
         }
         println("Fixing radii")
         c.fixRadii(localVectors.iterator)
@@ -81,11 +83,12 @@ object Main {
         result
       case "random" =>
         experiment.tag("parallelism", parallelism)
+        val coresetSize: Int = math.ceil(arguments.sizeFactor() * (arguments.k() + arguments.z.getOrElse(0))).toInt
         val repartitioned = vecs.repartition(parallelism).cache()
         repartitioned.count()
         println("Repartitioned the vectors")
         timed {
-          Algorithm.randomCoreset(repartitioned, arguments.tau() + arguments.z.getOrElse(0), dist)
+          Algorithm.randomCoreset(repartitioned, coresetSize, dist)
         }
       case "none" =>
         experiment.tag("parallelism", 1)
