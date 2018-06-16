@@ -44,10 +44,20 @@ object Main {
     val parallelism = arguments.parallelism.getOrElse(sc.defaultParallelism)
 
     val vecs = VectorIO.readKryo(sc, arguments.input()).cache()
+    val numVecs = vecs.count()
 
     val dist: (Vector, Vector) => Double = {case (a, b) => math.sqrt(Vectors.sqdist(a, b))}
 
     val (coreset, coresetTime) = arguments.coreset() match {
+      case "mapreduce-shuffle" =>
+        experiment.tag("parallelism", parallelism)
+        val logn = math.ceil(math.log(numVecs)).toInt
+        val coresetSize: Int = arguments.tau() + (arguments.z.getOrElse(0) / parallelism) + logn
+        println(s"Computing coreset of size $coresetSize")
+        timed {
+          val shuffled = vecs.keyBy(_ => Random.nextInt()).repartition(parallelism).cache().values
+          Algorithm.mapReduce(shuffled, coresetSize, dist)
+        }
       case "mapreduce" =>
         experiment.tag("parallelism", parallelism)
         val repartitioned = vecs.repartition(parallelism).cache()
