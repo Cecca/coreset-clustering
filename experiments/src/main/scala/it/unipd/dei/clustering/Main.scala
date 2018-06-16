@@ -43,24 +43,25 @@ object Main {
 
     val parallelism = arguments.parallelism.getOrElse(sc.defaultParallelism)
 
-    val vecs = VectorIO.readKryo(sc, arguments.input())
-      .keyBy(_ => Random.nextLong())
-      .repartition(parallelism)
-      .values
-      .cache()
-    println(s"Loaded ${vecs.count()} vectors")
+    val vecs = VectorIO.readKryo(sc, arguments.input()).cache()
 
     val dist: (Vector, Vector) => Double = {case (a, b) => math.sqrt(Vectors.sqdist(a, b))}
 
     val (coreset, coresetTime) = arguments.coreset() match {
       case "mapreduce" =>
         experiment.tag("parallelism", parallelism)
+        val repartitioned = vecs.repartition(parallelism).cache()
+        repartitioned.count()
+        println("Repartitioned the vectors")
         timed {
-          Algorithm.mapReduce(vecs, arguments.tau() + arguments.z.getOrElse(0), dist)
+          Algorithm.mapReduce(repartitioned, arguments.tau() + arguments.z.getOrElse(0), dist)
         }
       case "streaming" =>
         experiment.tag("parallelism", 1)
-        val localVectors = vecs.collect()
+        val localVectors = vecs // Randomly partition the vectors
+          .keyBy(_ => Random.nextLong())
+          .values
+          .collect()
         val result@(c, t) = timed {
           Algorithm.streaming(localVectors.iterator, arguments.tau() + arguments.z.getOrElse(0), dist)
         }
@@ -70,8 +71,11 @@ object Main {
         result
       case "random" =>
         experiment.tag("parallelism", parallelism)
+        val repartitioned = vecs.repartition(parallelism).cache()
+        repartitioned.count()
+        println("Repartitioned the vectors")
         timed {
-          Algorithm.randomCoreset(vecs, arguments.tau() + arguments.z.getOrElse(0), dist)
+          Algorithm.randomCoreset(repartitioned, arguments.tau() + arguments.z.getOrElse(0), dist)
         }
       case "none" =>
         experiment.tag("parallelism", 1)
