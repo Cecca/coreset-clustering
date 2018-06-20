@@ -53,11 +53,11 @@ object Main {
     val (coreset, coresetTime) = arguments.coreset() match {
       case "mapreduce-shuffle" =>
         experiment.tag("parallelism", parallelism)
-        val logn = math.ceil(math.log(numVecs)).toInt
         val coresetSize: Int = math.ceil(arguments.sizeFactor() * (arguments.k() + (arguments.zFactor() * arguments.z.getOrElse(0) / parallelism))).toInt
         println(s"Computing coreset of size $coresetSize")
+        val shuffled = vecs.keyBy(_ => Random.nextInt()).repartition(parallelism).values.cache()
+        shuffled.count()
         timed {
-          val shuffled = vecs.keyBy(_ => Random.nextInt()).repartition(parallelism).cache().values
           Algorithm.mapReduce(shuffled, coresetSize, dist)
         }
       case "mapreduce" =>
