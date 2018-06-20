@@ -37,7 +37,7 @@ object VectorIO {
   }
 
   def readKryo(sc: SparkContext, path: String): RDD[Vector] = {
-    sc.sequenceFile(path, classOf[BytesWritable], classOf[NullWritable], sc.defaultParallelism)
+    sc.sequenceFile(path, classOf[BytesWritable], classOf[NullWritable])
       .mapPartitions({ _.map { case (bytes, _) =>
           val input = new Input(bytes.getBytes)
           val size = input.readInt()

@@ -6,6 +6,7 @@ import org.apache.spark.{SparkConf, SparkContext}
 import org.rogach.scallop.ScallopConf
 import it.unipd.dei.clustering.ExperimentUtils.{appendTimers, jMap, timed}
 import MemoryUtils._
+import org.apache.spark.rdd.RDD
 
 import scala.util.Random
 
@@ -17,6 +18,7 @@ object Main {
     val z = opt[Int](required = false)
     val sizeFactor = opt[Double](required = false, default = Some(1), validate = _ >= 1.0)
     val zFactor = opt[Double](required = false, default = Some(1), validate = _ >= 1.0)
+    val smallCoreset = opt[String](default=Some("no"), validate = s => Set("yes", "no").contains(s))
     val coreset = opt[String](required = false, default = Some("mapreduce"))
     val forceGmm = toggle(default = Some(false))
     val parallelism = opt[Int](required = false)
@@ -26,12 +28,19 @@ object Main {
       new Experiment()
         .tag("input", input())
         .tag("k", k())
+        .tag("smallCoreset", smallCoreset())
         .tag("z", z.getOrElse(-1))
         .tag("zFactor", zFactor())
         .tag("sizeFactor", sizeFactor())
         .tag("coreset", coreset())
         .tag("force-gmm", forceGmm())
     }
+  }
+
+  def countOutliers(points: RDD[Vector]): Seq[Int] = {
+    points.mapPartitions({ vs =>
+      Iterator.single(vs.count(x => x(0) > 100))
+    }).collect().toSeq
   }
 
   def main(args: Array[String]): Unit = {
@@ -47,6 +56,7 @@ object Main {
 
     val vecs = VectorIO.readKryo(sc, arguments.input()).cache()
     val numVecs = vecs.count()
+    println(s"Input partitioning of outliers ${countOutliers(vecs)}")
 
     val dist: (Vector, Vector) => Double = {case (a, b) => math.sqrt(Vectors.sqdist(a, b))}
 
@@ -57,14 +67,23 @@ object Main {
         println(s"Computing coreset of size $coresetSize")
         val shuffled = vecs.keyBy(_ => Random.nextInt()).repartition(parallelism).values.cache()
         shuffled.count()
+        println(countOutliers(shuffled))
         timed {
           Algorithm.mapReduce(shuffled, coresetSize, dist)
         }
       case "mapreduce" =>
         experiment.tag("parallelism", parallelism)
-        val coresetSize: Int = math.ceil(arguments.sizeFactor() * (arguments.k() + arguments.z.getOrElse(0))).toInt
-        val repartitioned = vecs.repartition(parallelism).cache()
+        val coresetSize: Int = arguments.smallCoreset() match {
+          case "yes" => math.ceil(arguments.sizeFactor() * (arguments.k() + (arguments.zFactor() * arguments.z.getOrElse(0) / parallelism))).toInt
+          case "no" => math.ceil(arguments.sizeFactor() * (arguments.k() + arguments.z.getOrElse(0))).toInt
+        }
+        val repartitioned = if (vecs.getNumPartitions != parallelism)  {
+          vecs.repartition(parallelism).cache()
+        } else {
+          vecs
+        }
         repartitioned.count()
+        println(countOutliers(repartitioned))
         println("Repartitioned the vectors")
         timed {
           Algorithm.mapReduce(repartitioned, coresetSize, dist)
