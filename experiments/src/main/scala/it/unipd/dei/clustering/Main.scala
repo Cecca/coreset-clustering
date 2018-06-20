@@ -16,6 +16,7 @@ object Main {
     val k = opt[Int](required = true)
     val z = opt[Int](required = false)
     val sizeFactor = opt[Double](required = false, default = Some(1), validate = _ >= 1.0)
+    val zFactor = opt[Double](required = false, default = Some(1), validate = _ >= 1.0)
     val coreset = opt[String](required = false, default = Some("mapreduce"))
     val forceGmm = toggle(default = Some(false))
     val parallelism = opt[Int](required = false)
@@ -26,6 +27,7 @@ object Main {
         .tag("input", input())
         .tag("k", k())
         .tag("z", z.getOrElse(-1))
+        .tag("zFactor", z())
         .tag("sizeFactor", sizeFactor())
         .tag("coreset", coreset())
         .tag("force-gmm", forceGmm())
@@ -52,7 +54,7 @@ object Main {
       case "mapreduce-shuffle" =>
         experiment.tag("parallelism", parallelism)
         val logn = math.ceil(math.log(numVecs)).toInt
-        val coresetSize: Int = math.ceil(arguments.sizeFactor() * (arguments.k() + (arguments.z.getOrElse(0) / parallelism) + logn)).toInt
+        val coresetSize: Int = math.ceil(arguments.sizeFactor() * (arguments.k() + (arguments.zFactor() * arguments.z.getOrElse(0) / parallelism))).toInt
         println(s"Computing coreset of size $coresetSize")
         timed {
           val shuffled = vecs.keyBy(_ => Random.nextInt()).repartition(parallelism).cache().values
