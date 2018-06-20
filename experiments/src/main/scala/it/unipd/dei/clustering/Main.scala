@@ -110,8 +110,8 @@ object Main {
             None
           } else {
             println(s"Matrix would require ${formatBytes(neededBytes)}, using partially cached implementation")
-            val maxNumDistances = freeBytes() / 2 / 8
-            val cs = (math.ceil(math.sqrt(8*maxNumDistances + 1)).toInt + 1) / 2
+            // use half the free bytes for the cache
+            val cs = math.ceil(math.sqrt(freeBytes()/2) /4).toInt
             Some(cs)
           }
           Outliers.run(coreset.points, arguments.k(), z, dist, cacheSize)._1
