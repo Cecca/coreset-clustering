@@ -395,27 +395,24 @@ class PartiallyCachedDistanceMatrix[T](val points: IndexedSeq[T],
 
   // Sum the weights of the points within the given radius from all the points
   def ballWeight[T](radius: Double): Array[Long] = {
-    val out = Array.ofDim[Long](points.length)
-    var i = 0
-    while (i < points.length) {
+    (0 until points.length).par.map({ i =>
+      var sum = 0l
       var j = 0
       while (j < points.length) {
         if (cachedDistance(i, j) <= radius) {
-          out(i) += weights(j)
+          sum += weights(j)
         }
         j += 1
       }
-      i += 1
-    }
-    out
+      sum
+    }).toArray
   }
 
   def row(i: Int): Array[Double] = {
     val r = Array.ofDim[Double](points.length)
-    var j = 0
-    while (j<points.length) {
+    points.indices.par.foreach({ j =>
       r(j) = cachedDistance(i, j)
-    }
+    })
     r
   }
 
