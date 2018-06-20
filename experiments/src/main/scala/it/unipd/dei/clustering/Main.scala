@@ -27,7 +27,7 @@ object Main {
         .tag("input", input())
         .tag("k", k())
         .tag("z", z.getOrElse(-1))
-        .tag("zFactor", z())
+        .tag("zFactor", zFactor())
         .tag("sizeFactor", sizeFactor())
         .tag("coreset", coreset())
         .tag("force-gmm", forceGmm())
