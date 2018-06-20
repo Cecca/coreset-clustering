@@ -146,7 +146,7 @@ object Outliers {
     (sol, outliers)
   }
 
-  def run[T](points: IndexedSeq[ProxyPoint[T]], k: Int, z: Int, distance: (T, T) => Double, osc: Option[SparkContext])
+  def run[T](points: IndexedSeq[ProxyPoint[T]], k: Int, z: Int, distance: (T, T) => Double, cacheSize: Option[Int])
   : (IndexedSeq[ProxyPoint[T]], IndexedSeq[ProxyPoint[T]]) = {
     val n = points.size
     println(s"Clustering $n points with $k centers and $z outliers")
@@ -154,9 +154,10 @@ object Outliers {
     val proxyRadius = points.iterator.map(_.radius).max
     DEBUG(s"The proxies radius is $proxyRadius")
 
-    val distances = osc match {
-      case Some(sc) =>
-        DistributedDistanceMatrix(sc, points, distance)
+    val distances = cacheSize match {
+      case Some(cs) =>
+        println(s"Building distance matrix with maximum cache size $cs")
+        PartiallyCachedDistanceMatrix(points, distance, cs)
       case None =>
         LocalDistanceMatrix(points, distance)
     }
@@ -361,4 +362,76 @@ object LocalSortedDistanceVector {
     new LocalSortedDistanceVector(dists, out_idx)
   }
 
+}
+
+class PartiallyCachedDistanceMatrix[T](val points: IndexedSeq[T],
+                                       val distance: (T, T) => Double,
+                                       val weights: Array[Long],
+                                       val cacheSize: Int) extends DistanceMatrix {
+
+  // Store the lower half of the symmetric distance matrix
+  val cache: Array[Array[Double]] = {
+    val _d = Array.ofDim[Array[Double]](cacheSize)
+    var i = 0
+    while (i < cacheSize) {
+      var j = 0
+      _d(i) = Array.ofDim[Double](i)
+      while (j < i) {
+        _d(i)(j) = distance(points(i), points(j))
+        j += 1
+      }
+      i += 1
+    }
+    _d
+  }
+
+  def cachedDistance(_i: Int, _j: Int): Double = {
+    if (_i == _j) return 0.0
+    val i = math.max(_i, _j)
+    val j = math.min(_i, _j)
+    if (i < cacheSize) cache(i)(j)
+    else distance(points(i), points(j))
+  }
+
+  // Sum the weights of the points within the given radius from all the points
+  def ballWeight[T](radius: Double): Array[Long] = {
+    val out = Array.ofDim[Long](points.length)
+    var i = 0
+    while (i < points.length) {
+      var j = 0
+      while (j < points.length) {
+        if (cachedDistance(i, j) <= radius) {
+          out(i) += weights(j)
+        }
+        j += 1
+      }
+      i += 1
+    }
+    out
+  }
+
+  def row(i: Int): Array[Double] = {
+    val r = Array.ofDim[Double](points.length)
+    var j = 0
+    while (j<points.length) {
+      r(j) = cachedDistance(i, j)
+    }
+    r
+  }
+
+  def allDistances(): SortedDistanceVector = {
+    val candidates = new mutable.ArrayBuilder.ofDouble
+    for (i <- 0 until points.length; j <- 0 until i) {
+      candidates += cachedDistance(i, j)
+    }
+    LocalSortedDistanceVector(candidates.result())
+  }
+}
+
+object PartiallyCachedDistanceMatrix {
+  def apply[T](points: IndexedSeq[ProxyPoint[T]], distance: (T, T) => Double, cacheSize: Int): PartiallyCachedDistanceMatrix[T] = {
+    val n = points.length
+    val weights = points.map(_.weight).toArray
+    new PartiallyCachedDistanceMatrix[T](points.map(_.point), distance, weights, cacheSize)
+  }
 }
