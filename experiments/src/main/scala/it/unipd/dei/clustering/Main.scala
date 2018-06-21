@@ -7,6 +7,7 @@ import org.rogach.scallop.ScallopConf
 import it.unipd.dei.clustering.ExperimentUtils.{appendTimers, jMap, timed}
 import MemoryUtils._
 import org.apache.spark.rdd.RDD
+import org.apache.spark.storage.StorageLevel
 
 import scala.util.Random
 
@@ -54,9 +55,9 @@ object Main {
 
     val parallelism = arguments.parallelism.getOrElse(sc.defaultParallelism)
 
-    val vecs = VectorIO.readKryo(sc, arguments.input()).cache()
-    val numVecs = vecs.count()
-    println(s"Input partitioning of outliers ${countOutliers(vecs)}")
+    val vecs = VectorIO.readKryo(sc, arguments.input())//.cache()
+//    val numVecs = vecs.count()
+//    println(s"Input partitioning of outliers ${countOutliers(vecs)}")
 
     val dist: (Vector, Vector) => Double = {case (a, b) => math.sqrt(Vectors.sqdist(a, b))}
 
@@ -65,10 +66,8 @@ object Main {
         experiment.tag("parallelism", parallelism)
         val coresetSize: Int = math.ceil(arguments.sizeFactor() * (arguments.k() + (arguments.zFactor() * arguments.z.getOrElse(0) / parallelism))).toInt
         println(s"Computing coreset of size $coresetSize")
-        val shuffled = vecs.keyBy(_ => Random.nextInt()).repartition(parallelism).values.cache()
-        shuffled.count()
-        println(countOutliers(shuffled))
         timed {
+          val shuffled = vecs.keyBy(_ => Random.nextInt()).repartition(parallelism).values.persist(StorageLevel.MEMORY_AND_DISK)
           Algorithm.mapReduce(shuffled, coresetSize, dist)
         }
       case "mapreduce" =>
@@ -78,13 +77,13 @@ object Main {
           case "no" => math.ceil(arguments.sizeFactor() * (arguments.k() + arguments.z.getOrElse(0))).toInt
         }
         val repartitioned = if (vecs.getNumPartitions != parallelism)  {
-          vecs.repartition(parallelism).cache()
+          vecs.repartition(parallelism).persist(StorageLevel.MEMORY_ONLY)
         } else {
-          vecs
+          vecs.persist(StorageLevel.MEMORY_ONLY)
         }
-        repartitioned.count()
-        println(countOutliers(repartitioned))
-        println("Repartitioned the vectors")
+        val cnt = repartitioned.count()
+//        println(countOutliers(repartitioned))
+        println(s"Repartitioned the $cnt vectors")
         timed {
           Algorithm.mapReduce(repartitioned, coresetSize, dist)
         }
