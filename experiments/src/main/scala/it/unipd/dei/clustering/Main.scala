@@ -67,7 +67,7 @@ object Main {
         val coresetSize: Int = math.ceil(arguments.sizeFactor() * (arguments.k() + (arguments.zFactor() * arguments.z.getOrElse(0) / parallelism))).toInt
         println(s"Computing coreset of size $coresetSize")
         timed {
-          val shuffled = vecs.keyBy(_ => Random.nextInt()).repartition(parallelism).values.persist(StorageLevel.MEMORY_AND_DISK)
+          val shuffled = vecs.keyBy(_ => Random.nextInt()).repartition(parallelism).values.persist(StorageLevel.MEMORY_ONLY)
           Algorithm.mapReduce(shuffled, coresetSize, dist)
         }
       case "mapreduce" =>
@@ -92,6 +92,7 @@ object Main {
         val coresetSize: Int = math.ceil(arguments.sizeFactor() * (arguments.k() + arguments.z.getOrElse(0))).toInt
         val localVectors = vecs // Randomly partition the vectors
           .keyBy(_ => Random.nextLong())
+          .repartition(vecs.getNumPartitions)
           .values
           .collect()
         val result@(c, t) = timed {
