@@ -5,7 +5,9 @@
 # This is useful because the fat-jar does not include Spark and Hadoop, since
 # those are provided dependencies
 
-CLASSPATH_FILE=.classpath
+pushd $(dirname $0) > /dev/null
+
+CLASSPATH_FILE="$(pwd)/.run-classpath"
 
 if [[ ! -f $CLASSPATH_FILE ]]
 then
@@ -15,9 +17,11 @@ fi
 
 CLASSPATH=$(cat $CLASSPATH_FILE)
 
+popd > /dev/null
+
 java \
 	-Dspark.master="local[*]" \
-	-Dspark.default.parallelism=4 \
+  -Dspark.driver.host=127.0.0.1 \
 	-Dspark.serializer=org.apache.spark.serializer.KryoSerializer\
 	-Dexperiment.reporter.compress=false\
 	-Xmx4G \
