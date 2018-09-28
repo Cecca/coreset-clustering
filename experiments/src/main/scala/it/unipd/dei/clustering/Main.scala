@@ -67,7 +67,9 @@ object Main {
         val coresetSize: Int = math.ceil(arguments.sizeFactor() * (arguments.k() + (arguments.zFactor() * arguments.z.getOrElse(0) / parallelism))).toInt
         println(s"Computing coreset of size $coresetSize")
         timed {
-          val shuffled = vecs.keyBy(_ => Random.nextInt()).repartition(parallelism).values.persist(StorageLevel.MEMORY_ONLY)
+          val shuffled = vecs
+//            .coalesce(parallelism, shuffle=false)
+            .keyBy(_ => Random.nextInt()).repartition(parallelism).values//.persist(StorageLevel.MEMORY_ONLY)
           Algorithm.mapReduce(shuffled, coresetSize, dist)
         }
       case "mapreduce" =>
@@ -113,9 +115,14 @@ object Main {
         }
       case "none" =>
         experiment.tag("parallelism", 1)
+        println("Shuffling points")
         val c = new Coreset[Vector] {
           override def points: scala.Vector[ProxyPoint[Vector]] =
-            vecs.map(ProxyPoint.fromPoint).toLocalIterator.toVector
+            vecs
+              .keyBy(_ => Random.nextLong())
+              .repartition(vecs.getNumPartitions)
+              .values
+              .map(ProxyPoint.fromPoint).toLocalIterator.toVector
         }
         (c, 0L)
     }
