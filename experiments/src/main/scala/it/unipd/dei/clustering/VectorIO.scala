@@ -33,11 +33,12 @@ object VectorIO {
         }
       }, preservesPartitioning = true)
 
-      intermediate.saveAsSequenceFile(path, Some(classOf[org.apache.hadoop.io.compress.BZip2Codec]))
+      // intermediate.saveAsSequenceFile(path, Some(classOf[org.apache.hadoop.io.compress.SnappyCodec]))
+      intermediate.saveAsSequenceFile(path, None)
   }
 
   def readKryo(sc: SparkContext, path: String): RDD[Vector] = {
-    sc.sequenceFile(path, classOf[BytesWritable], classOf[NullWritable], sc.defaultParallelism)
+    sc.sequenceFile(path, classOf[BytesWritable], classOf[NullWritable])
       .mapPartitions({ _.map { case (bytes, _) =>
           val input = new Input(bytes.getBytes)
           val size = input.readInt()

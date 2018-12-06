@@ -20,6 +20,7 @@ import it.unipd.dei.clustering.Debug.DEBUG
 
 import scala.collection.mutable
 import scala.reflect.ClassTag
+import scala.util.Random
 class MapReduceCoreset[T:ClassTag](val points: Vector[ProxyPoint[T]],
                                    val radius: Double)
 extends Coreset[T] with Serializable {
@@ -57,7 +58,7 @@ object MapReduceCoreset {
     if (points.length < kernelSize) {
       new MapReduceCoreset(points.map(ProxyPoint.fromPoint).toVector, 0.0)
     } else {
-      val (assignment, distances) = GMM.runWithAssignement(points, kernelSize, distance)
+      val (assignment, distances) = GMM.runWithAssignement(points, kernelSize, Random.nextInt(points.size), distance)
       DEBUG("Computed kernel")
       DEBUG("Building result corest")
       fromAssignment(points, assignment, distances)
