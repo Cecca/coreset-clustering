@@ -1,7 +1,5 @@
 package it.unipd.dei.clustering
 
-import java.util.Collections
-
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 import scala.reflect.ClassTag
@@ -11,6 +9,7 @@ class StreamingOutliersClustering[T <: AnyRef : ClassTag](val k: Int,
                                                           val initialScalingFactor: Double,
                                                           val distance: (T, T) => Double) {
   import StreamingOutliersClustering._
+  require(initialScalingFactor > 0.0, "Initial scaling factor is zero")
 
   val alpha = 4
   val beta = 8
@@ -147,16 +146,24 @@ class StreamingOutliersClustering[T <: AnyRef : ClassTag](val k: Int,
   }
 
   def processFreePoints(): Unit = {
+    println(s"Processing free points (radius guess ${_r})")
+    println("  Removing points covered by current centers")
     // Step 1. Remove points covered by current clusters
     _centers.indices.foreach(removePointsCoveredBy)
+    println("  Find new centers with support")
     // Step 2. Find new centers with support
-    while (addCentersWithSupport()) {}
+    while (addCentersWithSupport()) {
+      println("    Found one, looking for another")
+    }
     // Step 3. Check if the current centers are OK.
-    if (numCenters <= k &&
-        _freePoints.size <= (k-numCenters)*z + z &&
-        outliers(_freePoints, k - numCenters, _r*nu, distance) <= z) {
+    println("  Finding if the current centers are OK")
+    if (numCenters > k ||
+        _freePoints.size > (k-numCenters)*z + z ||
+        outliers(_freePoints, k - numCenters, _r*nu, distance) > z) {
       // Step 4. Restructure the clusters
       _r = _r * alpha
+      require(!_r.isInfinite, "Radius became infinite!")
+      println(s"  Restructuring: new radius guess ${_r}")
       restructure()
       // Repeat from step one
       processFreePoints()
@@ -172,9 +179,11 @@ class StreamingOutliersClustering[T <: AnyRef : ClassTag](val k: Int,
         _r = initialScalingFactor * _initPeeker.iterator.flatMap({ x =>
           _initPeeker.iterator.map({ y =>
             distance(x,y)
-          })
+          }).filter(_ > 0.0) // Filter out distance with self
         }).min / 2.0
         // Replay the first points, now using them not for initialization
+        require(_r > 0.0)
+        println(s"Initial guess for the radius ${_r}")
         println("Replaying the first points")
         _initPeeker.foreach(update)
       }
@@ -185,6 +194,7 @@ class StreamingOutliersClustering[T <: AnyRef : ClassTag](val k: Int,
       _currentBatchCnt += 1
     } else {
       processFreePoints()
+      println("Moving to the next batch")
       _currentBatchCnt = 0
     }
   }
@@ -192,7 +202,7 @@ class StreamingOutliersClustering[T <: AnyRef : ClassTag](val k: Int,
   def radius(points: Iterator[T]): Double = {
     val top = new TopK(z+1)
     for (p <- points) {
-      val d = closestCenterDistance(p)
+      val d: Double = closestCenterDistance(p)
       top.update(d)
     }
     top.smallest
@@ -203,44 +213,23 @@ class StreamingOutliersClustering[T <: AnyRef : ClassTag](val k: Int,
 object StreamingOutliersClustering {
 
   class TopK(k: Int) {
-    private var elems = {
-      val ab = new ArrayBuffer[Double]()
-      ab.sizeHint(k)
-      ab
-    }
+    private val elems = new mutable.TreeSet[Double]()
+
+    override def toString: String = elems.toString()
 
     private def isInitializing: Boolean = elems.size < k
 
     def update(x: Double): Unit = {
       if (isInitializing) {
-        elems.append(x)
-        if (elems.size == k){
-          // Elements will be ordered in ascending order
-          elems = elems.sorted
-        }
-      } else if (x > elems(0)) {
+        elems.add(x)
+      } else if (x > elems.head) {
         // The element is in the top-k
-        elems(0) = 0
-        // Fix the order by "bubbling up" the new element
-        bubble()
+        elems.remove(elems.head)
+        elems.add(x)
       }
     }
 
-    def smallest: Double = elems(0)
-
-    private def bubble(): Unit = {
-      var i = 0
-      while (i < elems.size - 1) {
-        if (elems(i) < elems(i+1)) {
-          val tmp = elems(i)
-          elems(i) = elems(i+1)
-          elems(i+1) = tmp
-        } else {
-          return
-        }
-        i += 1
-      }
-    }
+    def smallest: Double = elems.head
 
   }
 

@@ -19,7 +19,7 @@ class ParallelStreamingClustering[T:ClassTag](val k: Int,
     instances.par.map({ instance =>
       instance.fixRadii(points.iterator)
       instance.radius
-    }).max
+    }).min
   }
 
 }
@@ -41,7 +41,7 @@ class ParallelStreamingOutliersClustering[T<:AnyRef:ClassTag](val k: Int,
   def radius(points: Iterable[T]): Double = {
     instances.par.map({ instance =>
       instance.radius(points.iterator)
-    }).max
+    }).min
   }
 
 }

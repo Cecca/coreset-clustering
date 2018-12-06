@@ -43,12 +43,18 @@ object BaselineStreaming {
       .repartition(vecs.getNumPartitions)
       .values
       .collect()
+    val total = localVectors.length
 
     val (radius, time): (Double, Long) = if (arguments.z.isSupplied) {
       val algo = new ParallelStreamingOutliersClustering[Vector](arguments.k(), arguments.z(), arguments.m(), dist)
       val iter = localVectors.iterator
       val (_,t) = timed {
+        var cnt = 0
         while (iter.hasNext) {
+          cnt += 1
+          if (cnt % (arguments.k() * arguments.z()) == 0) {
+            println(s"--> $cnt / $total")
+          }
           val p = iter.next()
           algo.update(p)
         }
@@ -68,7 +74,7 @@ object BaselineStreaming {
       (r, t)
     }
 
-    val throughput = localVectors.size / (time*1000) // in points per second
+    val throughput = localVectors.size / (time/1000.0) // in points per second
 
     experiment.append("results", jMap(
       "throughput" -> throughput,
