@@ -61,6 +61,7 @@ object StreamingCoreset {
 }
 
 class StreamingCoreset[T: ClassTag](val kernelSize: Int,
+                                    val initialScalingFactor: Double,
                                     val distance: (T, T) => Double)
 extends Coreset[T] {
 
@@ -118,6 +119,8 @@ extends Coreset[T] {
 //  def setKernelPoint(index: Int, point: T): Unit = {
 //    _kernel(index) = point
 //  }
+
+  def radius: Double = _radii.max
 
   private[clustering]
   def addKernelPoint(point: T): Unit = {
@@ -182,6 +185,10 @@ extends Coreset[T] {
     assert(weightInvariant, "Weight after new center")
     if (_insertionIdx == _kernel.length) {
       _initializing = false
+      // The initialization phase is finished, and we found the values of the initial radius.
+      // We scale this value by the initialScalingFactor, which is used for running multiple parallel
+      // instances of this algorithm with different running guesses on the radius
+      _threshold = _threshold*initialScalingFactor
     }
   }
 
