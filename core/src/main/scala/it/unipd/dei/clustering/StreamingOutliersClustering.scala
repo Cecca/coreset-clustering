@@ -1,5 +1,7 @@
 package it.unipd.dei.clustering
 
+import java.util.Collections
+
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 import scala.reflect.ClassTag
@@ -187,9 +189,60 @@ class StreamingOutliersClustering[T <: AnyRef : ClassTag](val k: Int,
     }
   }
 
+  def radius(points: Iterator[T]): Double = {
+    val top = new TopK(z+1)
+    for (p <- points) {
+      val d = closestCenterDistance(p)
+      top.update(d)
+    }
+    top.smallest
+  }
+
 }
 
 object StreamingOutliersClustering {
+
+  class TopK(k: Int) {
+    private var elems = {
+      val ab = new ArrayBuffer[Double]()
+      ab.sizeHint(k)
+      ab
+    }
+
+    private def isInitializing: Boolean = elems.size < k
+
+    def update(x: Double): Unit = {
+      if (isInitializing) {
+        elems.append(x)
+        if (elems.size == k){
+          // Elements will be ordered in ascending order
+          elems = elems.sorted
+        }
+      } else if (x > elems(0)) {
+        // The element is in the top-k
+        elems(0) = 0
+        // Fix the order by "bubbling up" the new element
+        bubble()
+      }
+    }
+
+    def smallest: Double = elems(0)
+
+    private def bubble(): Unit = {
+      var i = 0
+      while (i < elems.size - 1) {
+        if (elems(i) < elems(i+1)) {
+          val tmp = elems(i)
+          elems(i) = elems(i+1)
+          elems(i+1) = tmp
+        } else {
+          return
+        }
+        i += 1
+      }
+    }
+
+  }
 
   // A specialized version of the outliers algorithm that does not deal with the complication of proxy points.
   // This implements the original algorithm by Charikar et al.

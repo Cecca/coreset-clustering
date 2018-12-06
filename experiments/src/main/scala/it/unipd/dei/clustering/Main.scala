@@ -97,13 +97,13 @@ object Main {
           .repartition(vecs.getNumPartitions)
           .values
           .collect()
-        val result@(c, t) = timed {
+        val (c, t) = timed {
           Algorithm.streaming(localVectors.iterator, coresetSize, dist)
         }
         println("Fixing radii")
         c.fixRadii(localVectors.iterator)
         appendTimers("streaming-profiling", experiment, c.metricRegistry)
-        result
+        (c,t)
       case "random" =>
         experiment.tag("parallelism", parallelism)
         val coresetSize: Int = math.ceil(arguments.sizeFactor() * (arguments.k() + arguments.z.getOrElse(0))).toInt
