@@ -64,6 +64,7 @@ class StreamingCoreset[T: ClassTag](val kernelSize: Int,
                                     val initialScalingFactor: Double,
                                     val distance: (T, T) => Double)
 extends Coreset[T] {
+  def this(kernelSize: Int, distance: (T, T) => Double) = this(kernelSize, 1, distance)
 
   import StreamingCoreset._
 

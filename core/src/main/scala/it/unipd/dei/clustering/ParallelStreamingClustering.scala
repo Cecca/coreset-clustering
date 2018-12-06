@@ -11,7 +11,7 @@ class ParallelStreamingClustering[T:ClassTag](val k: Int,
     _is.toArray
   }
 
-  def update(point: T): () = {
+  def update(point: T): Unit = {
     instances.foreach(_.update(point))
   }
 
