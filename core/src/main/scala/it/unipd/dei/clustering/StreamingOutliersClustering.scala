@@ -146,24 +146,24 @@ class StreamingOutliersClustering[T <: AnyRef : ClassTag](val k: Int,
   }
 
   def processFreePoints(): Unit = {
-    println(s"Processing free points (radius guess ${_r})")
-    println("  Removing points covered by current centers")
+//    println(s"Processing free points (radius guess ${_r})")
+//    println("  Removing points covered by current centers")
     // Step 1. Remove points covered by current clusters
     _centers.indices.foreach(removePointsCoveredBy)
-    println("  Find new centers with support")
+//    println("  Find new centers with support")
     // Step 2. Find new centers with support
     while (addCentersWithSupport()) {
-      println("    Found one, looking for another")
+//      println("    Found one, looking for another")
     }
     // Step 3. Check if the current centers are OK.
-    println("  Finding if the current centers are OK")
+//    println("  Finding if the current centers are OK")
     if (numCenters > k ||
         _freePoints.size > (k-numCenters)*z + z ||
         outliers(_freePoints, k - numCenters, _r*nu, distance) > z) {
       // Step 4. Restructure the clusters
       _r = _r * alpha
       require(!_r.isInfinite, "Radius became infinite!")
-      println(s"  Restructuring: new radius guess ${_r}")
+//      println(s"  Restructuring: new radius guess ${_r}")
       restructure()
       // Repeat from step one
       processFreePoints()
@@ -174,7 +174,7 @@ class StreamingOutliersClustering[T <: AnyRef : ClassTag](val k: Int,
     if (_initializing) {
       _initPeeker.append(point)
       if (_initPeeker.size == (k + z + 1)) {
-        println("Initializing the initial guess for the radius")
+//        println("Initializing the initial guess for the radius")
         _initializing = false
         _r = initialScalingFactor * _initPeeker.iterator.flatMap({ x =>
           _initPeeker.iterator.map({ y =>
@@ -183,8 +183,8 @@ class StreamingOutliersClustering[T <: AnyRef : ClassTag](val k: Int,
         }).min / 2.0
         // Replay the first points, now using them not for initialization
         require(_r > 0.0)
-        println(s"Initial guess for the radius ${_r}")
-        println("Replaying the first points")
+//        println(s"Initial guess for the radius ${_r}")
+//        println("Replaying the first points")
         _initPeeker.foreach(update)
       }
     }
@@ -194,7 +194,7 @@ class StreamingOutliersClustering[T <: AnyRef : ClassTag](val k: Int,
       _currentBatchCnt += 1
     } else {
       processFreePoints()
-      println("Moving to the next batch")
+//      println("Moving to the next batch")
       _currentBatchCnt = 0
     }
   }

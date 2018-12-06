@@ -30,7 +30,10 @@ class ParallelStreamingOutliersClustering[T<:AnyRef:ClassTag](val k: Int,
                                                               val distance: (T, T) => Double) {
 
   val instances = {
-    val _is = for (i <- 1 to m) yield new StreamingOutliersClustering[T](k, z, math.pow(2, (i-1)/m), distance)
+    val _is = for (i <- 1 to m) yield {
+      val factor = math.pow(2.0, (i-1)/m.toDouble)
+      new StreamingOutliersClustering[T](k, z, factor, distance)
+    }
     _is.toArray
   }
 
@@ -39,8 +42,10 @@ class ParallelStreamingOutliersClustering[T<:AnyRef:ClassTag](val k: Int,
   }
 
   def radius(points: Iterable[T]): Double = {
-    instances.par.map({ instance =>
-      instance.radius(points.iterator)
+    instances.map({ instance =>
+      val r = instance.radius(points.iterator)
+      println(s"Radius proposed by instance with initial scaling ${instance.initialScalingFactor}: $r")
+      r
     }).min
   }
 
