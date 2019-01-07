@@ -45,7 +45,7 @@ object Algorithm {
     while(stream.hasNext) {
       coreset.update(stream.next())
     }
-    if (coreset.points.size > tau) {
+    if (coreset.numPoints > tau) {
       throw new IllegalArgumentException(s"Coreset has ${coreset.points.size} instead of $tau")
     }
     coreset

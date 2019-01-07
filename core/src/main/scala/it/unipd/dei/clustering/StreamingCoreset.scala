@@ -344,6 +344,8 @@ extends Coreset[T] {
     res
   }
 
+  def numPoints: Int = kernelSize
+
   override def points: Vector[ProxyPoint[T]] = {
     require(_isFixed)
     kernelPointsIterator.zip(_weights.iterator).zip(_radii.iterator).map { case ((center, weight), radius) =>
