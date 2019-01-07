@@ -69,18 +69,17 @@ extends Coreset[T] {
   import StreamingCoreset._
 
   val metricRegistry = new MetricRegistry()
-  val updatesTimer = metricRegistry.timer("update")
-  val innerUpdateTimer = metricRegistry.timer("innerUpdate")
-  val mergeTimer = metricRegistry.timer("merge")
-
-  val reporter = ConsoleReporter.forRegistry(metricRegistry).build();
-  reporter.start(5, TimeUnit.SECONDS)
+//  val updatesTimer = metricRegistry.timer("update")
+//  val innerUpdateTimer = metricRegistry.timer("innerUpdate")
+//  val mergeTimer = metricRegistry.timer("merge")
 
   private def farnessInvariant: Boolean =
     (numKernelPoints == 1) || (minKernelDistance >= threshold)
 
   // TODO: Keep track of the radius
 //  private def radiusInvariant: Boolean = delegatesRadius <= 2*threshold
+
+  private var _isFixed: Boolean = false
 
   private def weightInvariant: Boolean = weight == _seen
 
@@ -121,13 +120,15 @@ extends Coreset[T] {
 //    _kernel(index) = point
 //  }
 
-  def radius: Double = _radii.max
+  def radius: Double = {
+    require(_isFixed)
+    _radii.max
+  }
 
   private[clustering]
   def addKernelPoint(point: T): Unit = {
     _kernel(_insertionIdx) = point
     _weights(_insertionIdx) = 1L
-    _radii(_insertionIdx) = 0.0
 
     _insertionIdx += 1
   }
@@ -193,7 +194,19 @@ extends Coreset[T] {
     }
   }
 
-  private val currentPointToKernelDist = Array.ofDim[Double](_kernel.length)
+  // Return the index of a center within the given distance if it exists, otherwise -1
+  private def getCloseCenter(point: T, target: Double): Int = {
+    var idx = 0
+    val maxIdx = numKernelPoints
+    while(idx < maxIdx) {
+      val d = distance(_kernel(idx), point)
+      if (d < target) {
+        return idx
+      }
+      idx += 1
+    }
+    -1
+  }
 
   private def closestKernelPoint(point: T): (Int, Double) = {
     var idx = 0
@@ -202,7 +215,6 @@ extends Coreset[T] {
     val maxIdx = numKernelPoints
     while(idx < maxIdx) {
       val d = distance(_kernel(idx), point)
-      currentPointToKernelDist(idx) = d
       if (d < mDist) {
         mDist = d
         mIdx = idx
@@ -214,11 +226,10 @@ extends Coreset[T] {
 
   private[clustering]
   def updateStep(point: T): Boolean = {
-    val t = innerUpdateTimer.time()
     require(!_initializing)
     // Find distance to the closest kernel point
-    val (minIdx, minDist) = closestKernelPoint(point)
-    val r = if (minDist > 2 * _threshold) {
+    val closeIdx = getCloseCenter(point, 2*_threshold)
+    val r = if (closeIdx < 0) {
       // Pick the point as a center
       addKernelPoint(point)
 //      DEBUG(s"New center: $this")
@@ -226,13 +237,11 @@ extends Coreset[T] {
       true
     } else {
       // Increment the weight of the center
-      _weights(minIdx) += 1
-      _radii(minIdx) = math.max(_radii(minIdx), minDist)
+      _weights(closeIdx) += 1
 //      DEBUG(s"Discarded element: $this")
       assert(weightInvariant, "Weight after insertion")
       false
     }
-    t.stop()
     r
   }
 
@@ -255,7 +264,6 @@ extends Coreset[T] {
 
   private[clustering]
   def merge(): Unit = {
-    val t = mergeTimer.time()
     // Use the `kernel` array as if divided in 3 zones:
     //
     //  - selected: initially empty, stores all the selected nodes.
@@ -283,9 +291,6 @@ extends Coreset[T] {
         if (distance(_kernel(pivotIdx), _kernel(candidateIdx)) <= _threshold) {
           // Add all the weight of the to-be-discarded candidate to the pivot
           _weights(bottomIdx) += _weights(candidateIdx)
-          // update the radius as the maximum between the two.
-          // Here we are losing something because of the triangle inequality
-          _radii(bottomIdx) = math.max(_radii(bottomIdx), _radii(candidateIdx))
 
           // Move the candidate (and all its data) to the end of the array
           swapData(candidateIdx, topIdx)
@@ -313,7 +318,6 @@ extends Coreset[T] {
     // TODO: Check the invariant of radius
 //    assert(radiusInvariant, "Radius after merge")
     assert(weightInvariant, s"Weight after merge: $weight when we have seen ${_seen} points")
-    t.stop()
   }
 
   /**
@@ -322,7 +326,6 @@ extends Coreset[T] {
     */
   def update(point: T): Boolean = {
 //    DEBUG(s"Processing point $point")
-    val t = updatesTimer.time()
     // the _insertionIdx variable is modified inside the merge() method
     while (_insertionIdx == _kernel.length) {
       merge()
@@ -338,14 +341,15 @@ extends Coreset[T] {
     } else {
       updateStep(point)
     }
-    t.stop()
     res
   }
 
-  override def points: Vector[ProxyPoint[T]] =
+  override def points: Vector[ProxyPoint[T]] = {
+    require(_isFixed)
     kernelPointsIterator.zip(_weights.iterator).zip(_radii.iterator).map { case ((center, weight), radius) =>
       ProxyPoint[T](center, weight, radius)
     }.toVector
+  }
 
   def fixRadii(points: Iterator[T]) = {
     util.Arrays.fill(_radii, 0.0)
@@ -354,6 +358,7 @@ extends Coreset[T] {
       val (minIdx, minDist) = closestKernelPoint(p)
       _radii(minIdx) = math.max(_radii(minIdx), minDist)
     }
+    _isFixed = true
   }
 
 }
