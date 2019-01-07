@@ -234,7 +234,8 @@ object StreamingOutliersClustering {
   }
 
   // A specialized version of the outliers algorithm that does not deal with the complication of proxy points.
-  // This implements the original algorithm by Charikar et al.
+  // This implements the original algorithm by Charikar et al., with a small modification: since we
+  // execute it on subsets of the input, we have to use disks of radius 2r and 4r instead of r and 3r, respectively
   def outliers[T](points: IndexedSeq[T], k: Int, r: Double, distance: (T, T) => Double): Int = {
     val n = points.size
 
@@ -249,7 +250,7 @@ object StreamingOutliersClustering {
       var j = 0
       var w = 0l
       while (j < n) {
-        if (distances(i)(j) <= r) {
+        if (distances(i)(j) <= 2*r) {
           w += 1
         }
         j += 1
@@ -266,7 +267,7 @@ object StreamingOutliersClustering {
 
        // Mark points in the large disk as covered, that is, zero their weight if they are within the large disk.
       distances(center).par.zipWithIndex.foreach { case (d, j) =>
-        if (d <= 3*r) {
+        if (d <= 4*r) {
           weights(j) = 0
         }
       }
