@@ -11,11 +11,11 @@ object InjectOutliers {
 
   class Opts(args: Array[String]) extends ScallopConf(args) {
 
-    val input = opt[String](required=true)
-    val output = opt[String](required=true)
-    val outliers = opt[Int](required=true)
-    val factor = opt[Double](required=true)
-    val numPartitions = opt[Int](required=true)
+    val input = opt[String](required=true, descr="path to the input dataset")
+    val output = opt[String](required=true, descr="path to the output directory. If `.csv` produce a collection of csv text files, otherwise produce a collection of binary files")
+    val outliers = opt[Int](required=true, descr="the number of outliers to inject")
+    val factor = opt[Double](required=true, descr="multiplicative factor to 'spread out' the injected outliers")
+    val numPartitions = opt[Int](required=true, descr="number of chunks into which divide the output")
 
     verify()
   }
@@ -72,7 +72,11 @@ object InjectOutliers {
       }
     }, preservesPartitioning = true).cache()
 
-    VectorIO.writeKryo(result, opts.output())
+    if (opts.output().endsWith(".csv")) {
+      VectorIO.writeText(result, opts.output())
+    } else {
+      VectorIO.writeKryo(result, opts.output())
+    }
 
     val vecsWithDists = result.glom().first().map({ v =>
       val d = math.sqrt(Vectors.sqdist(v, center))

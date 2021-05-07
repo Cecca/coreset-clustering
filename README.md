@@ -58,3 +58,11 @@ Both datasets need some preprocessing to be used as input to the software.
     unzip household_power_consumption.zip
     cat household_power_consumption.txt | sed 1d | cut -d ';' -f 1,2 --complement | sed "s/;/,/g" > household_power_consumption.csv
     ./run VectorIO household_power_consumption.csv power.bin
+
+### Adding outliers to an existing dataset
+
+If your dataset is stored in a directory `dataset.bin`, then you can add `200` outliers with the following command:
+
+    ./run InjectOutliers -i dataset.bin/ --output power-outs.txt --outliers 200 --factor 10 --num-partitions 1
+
+To get a description of the available options, execute `./run InjectOutliers --help`.
