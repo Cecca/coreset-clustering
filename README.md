@@ -63,6 +63,6 @@ Both datasets need some preprocessing to be used as input to the software.
 
 If your dataset is stored in a directory `dataset.bin`, then you can add `200` outliers with the following command:
 
-    ./run InjectOutliers -i dataset.bin/ --output power-outs.txt --outliers 200 --factor 10 --num-partitions 1
+    ./run InjectOutliers -i dataset.bin/ --output dataset.csv --outliers 200 --factor 10 --num-partitions 1
 
 To get a description of the available options, execute `./run InjectOutliers --help`.
